@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="data:," />
+  <title>EuroMillions 最近开奖筛号辅助</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --card: #121936;
+      --muted: #8f9bb3;
+      --text: #eef3ff;
+      --accent: #77a6ff;
+      --accent-2: #a0ffd4;
+      --danger: #ff8a8a;
+      --chip: #1b2550;
+      --border: #28335f;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", sans-serif;
+      background: linear-gradient(180deg, #0b1020 0%, #0e1430 100%);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .wrap {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 30px;
+      line-height: 1.2;
+    }
+
+    .sub {
+      color: var(--muted);
+      margin-bottom: 18px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(12, 1fr);
+    }
+
+    .card {
+      background: rgba(18, 25, 54, 0.95);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    .span-12 { grid-column: span 12; }
+    .span-8 { grid-column: span 8; }
+    .span-6 { grid-column: span 6; }
+    .span-4 { grid-column: span 4; }
+
+    @media (max-width: 860px) {
+      .span-8, .span-6, .span-4 { grid-column: span 12; }
+      h1 { font-size: 24px; }
+      .wrap { padding: 16px; }
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .row-between {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .label {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 40px;
+      height: 40px;
+      padding: 0 12px;
+      border-radius: 999px;
+      background: var(--chip);
+      border: 1px solid var(--border);
+      font-weight: 700;
+    }
+
+    .chip.star {
+      background: rgba(160, 255, 212, 0.1);
+      border-color: rgba(160, 255, 212, 0.35);
+      color: var(--accent-2);
+    }
+
+    .chip.excluded {
+      background: rgba(255, 138, 138, 0.08);
+      border-color: rgba(255, 138, 138, 0.35);
+      color: #ffd2d2;
+    }
+
+    .chip.available {
+      background: rgba(119, 166, 255, 0.08);
+      border-color: rgba(119, 166, 255, 0.35);
+      color: #dce8ff;
+    }
+
+    .chip-btn {
+      cursor: pointer;
+      transition: transform 0.14s ease, border-color 0.14s ease, background 0.14s ease, color 0.14s ease, box-shadow 0.14s ease;
+    }
+
+    .chip-btn:hover {
+      transform: translateY(-1px);
+      border-color: rgba(119, 166, 255, 0.75);
+    }
+
+    .chip-btn:focus-visible {
+      outline: 2px solid rgba(119, 166, 255, 0.9);
+      outline-offset: 2px;
+    }
+
+    .chip.selected {
+      background: var(--accent);
+      border-color: rgba(119, 166, 255, 0.95);
+      color: #081121;
+      box-shadow: 0 0 0 3px rgba(119, 166, 255, 0.2);
+    }
+
+    .chip.star.selected {
+      background: var(--accent-2);
+      border-color: rgba(160, 255, 212, 0.95);
+      color: #08211a;
+      box-shadow: 0 0 0 3px rgba(160, 255, 212, 0.2);
+    }
+
+    button, select, textarea { font: inherit; }
+
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 11px 16px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #081121;
+    }
+
+    .btn-secondary {
+      background: #1a234a;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .pill {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 13px;
+      background: #131c3f;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    .status-ok { color: #8af0bf; }
+    .status-warn { color: #ffd08a; }
+    .status-bad { color: #ffadad; }
+
+    .draw-title {
+      font-weight: 700;
+      margin-bottom: 8px;
+      font-size: 18px;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .result-line {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 14px;
+      background: #0f1735;
+      border: 1px solid var(--border);
+    }
+
+    .draw-grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    }
+
+    .draw-card {
+      padding: 14px;
+      border-radius: 16px;
+      background: #0f1735;
+      border: 1px solid var(--border);
+      transition: border-color 0.14s ease, box-shadow 0.14s ease, transform 0.14s ease;
+    }
+
+    .draw-card.is-excluded {
+      border-color: rgba(255, 138, 138, 0.45);
+      box-shadow: 0 0 0 3px rgba(255, 138, 138, 0.08);
+    }
+
+    .draw-card.is-inactive {
+      opacity: 0.8;
+    }
+
+    .draw-card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .draw-card-status {
+      font-size: 12px;
+      padding: 5px 9px;
+    }
+
+    .count-switches {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    .count-option {
+      background: #1a234a;
+      color: var(--text);
+      border: 1px solid var(--border);
+      transition: transform 0.14s ease, border-color 0.14s ease, background 0.14s ease, color 0.14s ease;
+    }
+
+    .count-option:hover:not(:disabled) {
+      transform: translateY(-1px);
+      border-color: rgba(119, 166, 255, 0.75);
+    }
+
+    .count-option.is-active {
+      background: var(--accent);
+      color: #081121;
+      border-color: rgba(119, 166, 255, 0.95);
+    }
+
+    .count-option:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 120px;
+      background: #0f1735;
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 12px;
+      resize: vertical;
+    }
+
+    .note {
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(255, 208, 138, 0.08);
+      border: 1px solid rgba(255, 208, 138, 0.25);
+      color: #ffe4b7;
+      font-size: 14px;
+    }
+
+    .test-log {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space: pre-wrap;
+      font-size: 12px;
+      color: #cfd9f6;
+      background: #0f1735;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      max-height: 280px;
+      overflow: auto;
+    }
+
+    .saved-tickets {
+      display: grid;
+      gap: 12px;
+    }
+
+    .saved-ticket {
+      padding: 14px;
+      border-radius: 16px;
+      background: #0f1735;
+      border: 1px solid var(--border);
+    }
+
+    .saved-ticket.is-invalid {
+      border-color: rgba(255, 208, 138, 0.45);
+      box-shadow: 0 0 0 3px rgba(255, 208, 138, 0.08);
+    }
+
+    .saved-ticket-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .saved-ticket-remove {
+      padding: 8px 12px;
+    }
+
+    .saved-ticket-status {
+      margin-top: 12px;
+      font-size: 13px;
+      color: #ffe4b7;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>EuroMillions 最近开奖筛号辅助</h1>
+    <div class="sub">页面打开时会自动读取当前站点里的最新开奖数据文件，默认剔除最近 2 期；你也可以自由切换剔除最近 1、3、4、5 期，并立刻看到剩余号码池更新。页面不使用浏览器本地缓存，方便你直接手动选号。</div>
+
+    <div class="grid">
+      <section class="card span-12">
+        <div class="row-between">
+          <div class="row">
+            <span class="pill" id="statusText">正在初始化…</span>
+            <span class="pill" id="lastUpdated">尚未更新</span>
+            <span class="pill" id="dataSource">数据源：未确定</span>
+          </div>
+          <button class="btn-secondary" id="refreshBtn">刷新最新开奖</button>
+        </div>
+      </section>
+
+      <section class="card span-4">
+        <div class="label">剔除范围</div>
+        <div class="muted" id="filterSummary">默认剔除最近 2 期已发布号码。</div>
+        <div class="count-switches" id="exclusionCountControls"></div>
+      </section>
+
+      <section class="card span-8">
+        <div class="label">最近已发布开奖</div>
+        <div class="draw-grid" id="recentDraws"></div>
+      </section>
+
+      <section class="card span-6">
+        <div class="label">已剔除主号</div>
+        <div class="row" id="excludedMain"></div>
+        <div class="label" style="margin-top:14px;">已剔除星号</div>
+        <div class="row" id="excludedStars"></div>
+      </section>
+
+      <section class="card span-6">
+        <div class="label">剩余主号池</div>
+        <div class="row" id="availableMain"></div>
+        <div class="label" style="margin-top:14px;">剩余星号池</div>
+        <div class="row" id="availableStars"></div>
+      </section>
+
+      <section class="card span-12">
+        <div class="row-between">
+          <div>
+            <div class="label">我的选号</div>
+            <div class="muted" id="selectionHint">请在剩余号码池中点击选择 5 个主号和 2 个星号。</div>
+          </div>
+          <div class="row">
+            <button class="btn-secondary" id="saveTicketBtn">固定这一注</button>
+            <button class="btn-secondary" id="clearSelectionBtn">清空选择</button>
+          </div>
+        </div>
+        <div class="label" style="margin-top:14px;">已选主号</div>
+        <div class="row" id="selectedMain"></div>
+        <div class="label" style="margin-top:14px;">已选星号</div>
+        <div class="row" id="selectedStars"></div>
+      </section>
+
+      <section class="card span-12">
+        <div class="label">已固定号码</div>
+        <div class="muted" id="savedTicketsHint" style="margin-bottom:12px;">还没有固定任何号码。固定当前选号后，就可以继续选择下一注。</div>
+        <div class="saved-tickets" id="savedTickets"></div>
+      </section>
+
+      <section class="card span-12">
+        <div class="label">手动选号提示</div>
+        <div class="note">这个页面会按你当前选定的剔除期数，把最近几期已经出现过的号码排除掉。你可以直接参考“剩余主号池”和“剩余星号池”，自行挑选 5 个主号和 2 个星号。</div>
+      </section>
+
+      <section class="card span-12">
+        <div class="label">备用手动输入</div>
+        <div class="muted" style="margin-bottom:10px;">如果自动数据文件暂时不可用，可手动贴入最近多期数据。格式示例：</div>
+        <textarea id="manualInput">[
+  {"date":"2026-03-27","numbers":[4,10,43,44,48],"stars":[2,4]},
+  {"date":"2026-03-24","numbers":[12,16,17,18,27],"stars":[1,3]},
+  {"date":"2026-03-20","numbers":[5,12,16,37,46],"stars":[8,10]},
+  {"date":"2026-03-17","numbers":[5,17,28,33,41],"stars":[3,9]},
+  {"date":"2026-03-13","numbers":[13,17,26,41,48],"stars":[4,10]}
+]</textarea>
+        <div class="row" style="margin-top:12px;">
+          <button class="btn-secondary" id="manualApplyBtn">使用手动数据</button>
+          <button class="btn-secondary" id="useFallbackBtn">载入内置样例</button>
+        </div>
+        <div class="note" style="margin-top:14px;">这只是筛号与展示工具，不会改变彩票本身的中奖概率。</div>
+      </section>
+
+      <section class="card span-12">
+        <div class="row-between">
+          <div>
+            <div class="label">页面自检</div>
+            <div class="muted">用于验证解析、剔除期数切换、选号交互和容错逻辑。</div>
+          </div>
+          <button class="btn-secondary" id="runTestsBtn">运行自检</button>
+        </div>
+        <div id="testLog" class="test-log" style="margin-top:12px;">尚未运行</div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const API_CANDIDATES = [
+      { url: './data/draws.json', sourceLabel: 'GitHub 静态数据' }
+    ];
+
+    const DEFAULT_EXCLUSION_DRAW_COUNT = 2;
+    const EXCLUSION_OPTIONS = [1, 2, 3, 4, 5];
+    const MAX_RECENT_DRAWS = EXCLUSION_OPTIONS[EXCLUSION_OPTIONS.length - 1];
+
+    const FALLBACK_DRAWS = [
+      { id: '2026-03-27', date: '2026-03-27', numbers: [4, 10, 43, 44, 48], stars: [2, 4] },
+      { id: '2026-03-24', date: '2026-03-24', numbers: [12, 16, 17, 18, 27], stars: [1, 3] },
+      { id: '2026-03-20', date: '2026-03-20', numbers: [5, 12, 16, 37, 46], stars: [8, 10] },
+      { id: '2026-03-17', date: '2026-03-17', numbers: [5, 17, 28, 33, 41], stars: [3, 9] },
+      { id: '2026-03-13', date: '2026-03-13', numbers: [13, 17, 26, 41, 48], stars: [4, 10] }
+    ];
+
+    const MAIN_POOL = Array.from({ length: 50 }, (_, i) => i + 1);
+    const STAR_POOL = Array.from({ length: 12 }, (_, i) => i + 1);
+
+    const els = {
+      statusText: document.getElementById('statusText'),
+      lastUpdated: document.getElementById('lastUpdated'),
+      dataSource: document.getElementById('dataSource'),
+      filterSummary: document.getElementById('filterSummary'),
+      exclusionCountControls: document.getElementById('exclusionCountControls'),
+      recentDraws: document.getElementById('recentDraws'),
+      excludedMain: document.getElementById('excludedMain'),
+      excludedStars: document.getElementById('excludedStars'),
+      availableMain: document.getElementById('availableMain'),
+      availableStars: document.getElementById('availableStars'),
+      selectedMain: document.getElementById('selectedMain'),
+      selectedStars: document.getElementById('selectedStars'),
+      selectionHint: document.getElementById('selectionHint'),
+      saveTicketBtn: document.getElementById('saveTicketBtn'),
+      clearSelectionBtn: document.getElementById('clearSelectionBtn'),
+      savedTicketsHint: document.getElementById('savedTicketsHint'),
+      savedTickets: document.getElementById('savedTickets'),
+      manualInput: document.getElementById('manualInput'),
+      testLog: document.getElementById('testLog')
+    };
+
+    let currentState = {
+      draws: [],
+      exclusionDrawCount: DEFAULT_EXCLUSION_DRAW_COUNT,
+      excludedMain: [],
+      excludedStars: [],
+      availableMain: MAIN_POOL.slice(),
+      availableStars: STAR_POOL.slice(),
+      source: '未初始化',
+      generatedAt: null
+    };
+
+    let currentSelection = {
+      main: [],
+      stars: []
+    };
+
+    let savedTickets = [];
+    let nextTicketId = 1;
+
+    function setStatus(text, level = 'ok') {
+      els.statusText.textContent = text;
+      els.statusText.className = 'pill ' + (level === 'ok' ? 'status-ok' : level === 'warn' ? 'status-warn' : 'status-bad');
+    }
+
+    function setUpdated(value = null) {
+      const timestamp = value ? new Date(value) : new Date();
+      const displayTime = Number.isNaN(timestamp.getTime()) ? new Date() : timestamp;
+      els.lastUpdated.textContent = '更新于 ' + displayTime.toLocaleString('zh-CN');
+    }
+
+    function setSource(text) {
+      els.dataSource.textContent = '数据源：' + text;
+    }
+
+    function chip(n, cls = '') {
+      return `<span class="chip ${cls}">${n}</span>`;
+    }
+
+    function renderPool(container, values, cls = 'available') {
+      container.innerHTML = values.length
+        ? values.map(v => chip(v, cls)).join('')
+        : '<span class="muted">无</span>';
+    }
+
+    function chipButton(n, type, extraClass = '') {
+      const selectionKey = type === 'main' ? 'main' : 'stars';
+      const isSelected = currentSelection[selectionKey].includes(n);
+      const selectedClass = isSelected ? 'selected' : '';
+      const starClass = type === 'stars' ? 'star' : '';
+      return `<button type="button" class="chip chip-btn available ${starClass} ${selectedClass} ${extraClass}" data-select-type="${type}" data-value="${n}" aria-pressed="${isSelected ? 'true' : 'false'}">${n}</button>`;
+    }
+
+    function renderSelectablePool(container, values, type) {
+      container.innerHTML = values.length
+        ? values.map(v => chipButton(v, type)).join('')
+        : '<span class="muted">无</span>';
+    }
+
+    function formatDate(value) {
+      if (!value) return '日期未知';
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return String(value);
+      return d.toLocaleDateString('zh-CN');
+    }
+
+    function uniqSorted(arr) {
+      return Array.from(new Set(arr)).sort((a, b) => a - b);
+    }
+
+    function pickDirectArray(obj, keys) {
+      for (const key of keys) {
+        if (Array.isArray(obj?.[key])) return obj[key];
+      }
+      return null;
+    }
+
+    function pickDirectValue(obj, keys) {
+      for (const key of keys) {
+        if (obj && obj[key] != null) return obj[key];
+      }
+      return null;
+    }
+
+    function collectNumericArrays(input, out = []) {
+      if (Array.isArray(input)) {
+        if (input.every(v => typeof v === 'number')) out.push(input);
+        for (const item of input) collectNumericArrays(item, out);
+        return out;
+      }
+      if (input && typeof input === 'object') {
+        for (const v of Object.values(input)) collectNumericArrays(v, out);
+      }
+      return out;
+    }
+
+    function normalizeOneDraw(raw, index = 0) {
+      if (!raw) return null;
+
+      let numbers = pickDirectArray(raw, ['numbers', 'mainNumbers', 'main_numbers', 'winningNumbers', 'winning_numbers']);
+      let stars = pickDirectArray(raw, ['stars', 'luckyStars', 'lucky_stars', 'winningStars', 'winning_stars', 'estrelas']);
+      const date = pickDirectValue(raw, ['date', 'drawDate', 'draw_date', 'createdAt', 'created_at']);
+      const id = pickDirectValue(raw, ['id', 'drawId', 'draw_id', 'contest', 'contestId', 'contest_id']) ?? index;
+
+      if ((!numbers || !stars) && Array.isArray(raw?.result) && raw.result.length >= 7 && raw.result.every(v => typeof v === 'number')) {
+        numbers = raw.result.slice(0, 5);
+        stars = raw.result.slice(5, 7);
+      }
+
+      if (!numbers || !stars) {
+        const arrays = collectNumericArrays(raw);
+        const fiveish = arrays.find(arr => arr.length === 5 && arr.every(n => Number.isInteger(n) && n >= 1 && n <= 50));
+        const starish = arrays.find(arr => arr.length === 2 && arr.every(n => Number.isInteger(n) && n >= 1 && n <= 12));
+        if (!numbers && fiveish) numbers = fiveish;
+        if (!stars && starish) stars = starish;
+      }
+
+      if ((!numbers || !stars) && Array.isArray(raw) && raw.length >= 7 && raw.every(v => typeof v === 'number')) {
+        numbers = raw.slice(0, 5);
+        stars = raw.slice(5, 7);
+      }
+
+      if (!numbers || !stars) return null;
+      if (numbers.length < 5 || stars.length < 2) return null;
+
+      const cleanNumbers = uniqSorted(numbers.map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= 50)).slice(0, 5);
+      const cleanStars = uniqSorted(stars.map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= 12)).slice(0, 2);
+
+      if (cleanNumbers.length !== 5 || cleanStars.length !== 2) return null;
+
+      return { id, date, numbers: cleanNumbers, stars: cleanStars };
+    }
+
+    function extractDrawArray(raw) {
+      if (Array.isArray(raw)) return raw;
+
+      const candidates = [
+        raw?.data,
+        raw?.results,
+        raw?.draws,
+        raw?.items,
+        raw?.content,
+        raw?.payload,
+        raw?.response?.data,
+        raw?.response?.draws
+      ].filter(Boolean);
+
+      for (const candidate of candidates) {
+        if (Array.isArray(candidate)) return candidate;
+      }
+
+      const queue = [raw];
+      while (queue.length) {
+        const node = queue.shift();
+        if (Array.isArray(node) && node.length && node.every(v => typeof v === 'object' || Array.isArray(v))) return node;
+        if (node && typeof node === 'object') {
+          for (const value of Object.values(node)) queue.push(value);
+        }
+      }
+      return [];
+    }
+
+    function compareDrawDesc(a, b) {
+      const da = new Date(a.date || 0).getTime();
+      const db = new Date(b.date || 0).getTime();
+      if (!Number.isNaN(da) && !Number.isNaN(db) && da !== db) return db - da;
+      const ai = Number(a.id) || 0;
+      const bi = Number(b.id) || 0;
+      return bi - ai;
+    }
+
+    function clampExclusionDrawCount(count, drawCount) {
+      const preferred = EXCLUSION_OPTIONS.includes(Number(count)) ? Number(count) : DEFAULT_EXCLUSION_DRAW_COUNT;
+      const maxAllowed = Math.min(Math.max(drawCount, 1), MAX_RECENT_DRAWS);
+      return Math.max(1, Math.min(preferred, maxAllowed));
+    }
+
+    function renderExclusionControls() {
+      const drawCount = Math.min(currentState.draws.length, MAX_RECENT_DRAWS);
+      const effectiveCount = drawCount ? clampExclusionDrawCount(currentState.exclusionDrawCount, drawCount) : DEFAULT_EXCLUSION_DRAW_COUNT;
+      els.exclusionCountControls.innerHTML = EXCLUSION_OPTIONS.map(count => {
+        const disabled = count > drawCount;
+        const active = count === effectiveCount && !disabled;
+        return `<button type="button" class="count-option ${active ? 'is-active' : ''}" data-exclusion-count="${count}" ${disabled ? 'disabled' : ''}>最近 ${count} 期</button>`;
+      }).join('');
+
+      if (!drawCount) {
+        els.filterSummary.textContent = '默认剔除最近 2 期已发布号码。拿到最新数据后，这里可以立即切换到 1、3、4、5 期。';
+        return;
+      }
+
+      const activeDraws = currentState.draws.slice(0, effectiveCount);
+      const dateText = activeDraws.map(draw => formatDate(draw.date)).join('、');
+      els.filterSummary.textContent = `当前剔除最近 ${effectiveCount} 期：${dateText}。切换按钮后会立刻更新剩余号码池。`;
+    }
+
+    function renderRecentDraws() {
+      if (!currentState.draws.length) {
+        els.recentDraws.innerHTML = '<div class="muted">未获取到开奖数据</div>';
+        return;
+      }
+
+      els.recentDraws.innerHTML = currentState.draws.map((draw, index) => {
+        const isExcluded = index < currentState.exclusionDrawCount;
+        return `
+          <article class="draw-card ${isExcluded ? 'is-excluded' : 'is-inactive'}">
+            <div class="draw-card-head">
+              <div>
+                <div class="label">最近第 ${index + 1} 期</div>
+                <div class="draw-title">${formatDate(draw.date)}</div>
+              </div>
+              <span class="pill draw-card-status ${isExcluded ? 'status-warn' : ''}">${isExcluded ? '参与剔除' : '仅展示'}</span>
+            </div>
+            <div class="muted">期次 / ID：${draw.id ?? '未知'}</div>
+            <div class="result-line">
+              <div class="label">主号</div>
+              <div class="row">${draw.numbers.map(n => chip(n)).join('')}</div>
+              <div class="label" style="margin-top:12px;">星号</div>
+              <div class="row">${draw.stars.map(n => chip(n, 'star')).join('')}</div>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    function renderSelection() {
+      els.selectedMain.innerHTML = currentSelection.main.length
+        ? currentSelection.main.map(n => chip(n, 'selected')).join('')
+        : '<span class="muted">未选择主号</span>';
+
+      els.selectedStars.innerHTML = currentSelection.stars.length
+        ? currentSelection.stars.map(n => chip(n, 'star selected')).join('')
+        : '<span class="muted">未选择星号</span>';
+
+      els.selectionHint.textContent = `已选 ${currentSelection.main.length}/5 个主号，${currentSelection.stars.length}/2 个星号。点击剩余号码池中的数字可选中或取消。`;
+      if (currentSelection.main.length === 5 && currentSelection.stars.length === 2) {
+        els.selectionHint.textContent = '已完成当前选号：5 个主号和 2 个星号。点击“固定这一注”后，可继续选择下一注。';
+      }
+
+      els.saveTicketBtn.disabled = !(currentSelection.main.length === 5 && currentSelection.stars.length === 2);
+      els.clearSelectionBtn.disabled = currentSelection.main.length === 0 && currentSelection.stars.length === 0;
+    }
+
+    function isTicketValid(ticket) {
+      return ticket.main.every(n => currentState.availableMain.includes(n)) &&
+        ticket.stars.every(n => currentState.availableStars.includes(n));
+    }
+
+    function renderSavedTickets() {
+      if (!savedTickets.length) {
+        els.savedTicketsHint.textContent = '还没有固定任何号码。固定当前选号后，就可以继续选择下一注。';
+        els.savedTickets.innerHTML = '<div class="muted">暂无已固定号码</div>';
+        return;
+      }
+
+      const invalidCount = savedTickets.filter(ticket => !isTicketValid(ticket)).length;
+      els.savedTicketsHint.textContent = `已固定 ${savedTickets.length} 注。固定后的号码会保留在当前页面中，你可以继续选择下一注。`;
+      if (invalidCount) {
+        els.savedTicketsHint.textContent += ` 其中有 ${invalidCount} 注包含当前已剔除号码。`;
+      }
+
+      els.savedTickets.innerHTML = savedTickets.map((ticket, index) => {
+        const valid = isTicketValid(ticket);
+        return `
+          <div class="saved-ticket ${valid ? '' : 'is-invalid'}">
+            <div class="saved-ticket-head">
+              <strong>第 ${index + 1} 注</strong>
+              <button type="button" class="btn-secondary saved-ticket-remove" data-ticket-id="${ticket.id}">删除这一注</button>
+            </div>
+            <div class="label">主号</div>
+            <div class="row">${ticket.main.map(n => chip(n, 'selected')).join('')}</div>
+            <div class="label" style="margin-top:12px;">星号</div>
+            <div class="row">${ticket.stars.map(n => chip(n, 'star selected')).join('')}</div>
+            ${valid ? '' : '<div class="saved-ticket-status">这注里有号码已经落入当前剔除范围，你可以保留它作参考，或删除后重新选。</div>'}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function syncSelectionWithAvailablePools() {
+      const beforeMain = currentSelection.main.join(',');
+      const beforeStars = currentSelection.stars.join(',');
+      currentSelection.main = currentSelection.main.filter(n => currentState.availableMain.includes(n));
+      currentSelection.stars = currentSelection.stars.filter(n => currentState.availableStars.includes(n));
+      return beforeMain !== currentSelection.main.join(',') || beforeStars !== currentSelection.stars.join(',');
+    }
+
+    function renderAll(updateTimestamp = false) {
+      renderExclusionControls();
+      renderRecentDraws();
+      renderPool(els.excludedMain, currentState.excludedMain, 'excluded');
+      renderPool(els.excludedStars, currentState.excludedStars, 'excluded');
+      renderSelectablePool(els.availableMain, currentState.availableMain, 'main');
+      renderSelectablePool(els.availableStars, currentState.availableStars, 'stars');
+      renderSelection();
+      renderSavedTickets();
+      setSource(currentState.source);
+      if (updateTimestamp) {
+        setUpdated(currentState.generatedAt);
+      }
+    }
+
+    function recomputeFromCurrentDraws(sourceLabel = currentState.source, updateTimestamp = false) {
+      if (!currentState.draws.length) {
+        currentState = {
+          ...currentState,
+          source: sourceLabel,
+          excludedMain: [],
+          excludedStars: [],
+          availableMain: MAIN_POOL.slice(),
+          availableStars: STAR_POOL.slice()
+        };
+        renderAll(updateTimestamp);
+        return { selectionTrimmed: false };
+      }
+
+      const exclusionDrawCount = clampExclusionDrawCount(currentState.exclusionDrawCount, currentState.draws.length);
+      const activeDraws = currentState.draws.slice(0, exclusionDrawCount);
+      const excludedMain = uniqSorted(activeDraws.flatMap(draw => draw.numbers));
+      const excludedStars = uniqSorted(activeDraws.flatMap(draw => draw.stars));
+      const availableMain = MAIN_POOL.filter(n => !excludedMain.includes(n));
+      const availableStars = STAR_POOL.filter(n => !excludedStars.includes(n));
+
+      if (availableMain.length < 5 || availableStars.length < 2) {
+        throw new Error('剔除后剩余号码不足以继续选号');
+      }
+
+      currentState = {
+        ...currentState,
+        source: sourceLabel,
+        exclusionDrawCount,
+        excludedMain,
+        excludedStars,
+        availableMain,
+        availableStars
+      };
+
+      const selectionTrimmed = syncSelectionWithAvailablePools();
+      renderAll(updateTimestamp);
+      return { selectionTrimmed };
+    }
+
+    function updateExclusionDrawCount(count) {
+      if (!currentState.draws.length) {
+        return;
+      }
+
+      const nextCount = clampExclusionDrawCount(count, currentState.draws.length);
+      if (nextCount === currentState.exclusionDrawCount) {
+        return;
+      }
+
+      currentState.exclusionDrawCount = nextCount;
+      const { selectionTrimmed } = recomputeFromCurrentDraws(currentState.source, false);
+      if (selectionTrimmed) {
+        setStatus(`已改为剔除最近 ${nextCount} 期；当前选号中不符合新规则的号码已自动取消。`, 'warn');
+        return;
+      }
+      setStatus(`已改为剔除最近 ${nextCount} 期，结果已立即更新。`, 'ok');
+    }
+
+    function toggleSelection(type, value) {
+      const limit = type === 'main' ? 5 : 2;
+      const pool = type === 'main' ? currentState.availableMain : currentState.availableStars;
+      const selectionKey = type === 'main' ? 'main' : 'stars';
+      const selected = currentSelection[selectionKey];
+
+      if (!pool.includes(value)) {
+        return;
+      }
+
+      const index = selected.indexOf(value);
+      if (index >= 0) {
+        selected.splice(index, 1);
+      } else {
+        if (selected.length >= limit) {
+          els.selectionHint.textContent = `${type === 'main' ? '主号' : '星号'}最多只能选择 ${limit} 个；如需更换，请先取消一个已选号码。`;
+          return;
+        }
+        selected.push(value);
+        selected.sort((a, b) => a - b);
+      }
+
+      renderSelectablePool(els.availableMain, currentState.availableMain, 'main');
+      renderSelectablePool(els.availableStars, currentState.availableStars, 'stars');
+      renderSelection();
+    }
+
+    function clearSelection() {
+      currentSelection.main = [];
+      currentSelection.stars = [];
+      renderSelectablePool(els.availableMain, currentState.availableMain, 'main');
+      renderSelectablePool(els.availableStars, currentState.availableStars, 'stars');
+      renderSelection();
+    }
+
+    function arraysEqual(a, b) {
+      return a.length === b.length && a.every((value, index) => value === b[index]);
+    }
+
+    function saveCurrentTicket() {
+      if (!(currentSelection.main.length === 5 && currentSelection.stars.length === 2)) {
+        setStatus('请先选满 5 个主号和 2 个星号，再固定这一注。', 'warn');
+        return;
+      }
+
+      const duplicate = savedTickets.some(ticket =>
+        arraysEqual(ticket.main, currentSelection.main) &&
+        arraysEqual(ticket.stars, currentSelection.stars)
+      );
+      if (duplicate) {
+        setStatus('这一注已经固定过了，可以直接继续选择下一注。', 'warn');
+        return;
+      }
+
+      savedTickets.push({
+        id: nextTicketId++,
+        main: [...currentSelection.main],
+        stars: [...currentSelection.stars]
+      });
+      renderSavedTickets();
+      clearSelection();
+      setStatus(`已固定第 ${savedTickets.length} 注，可以继续选择下一注。`, 'ok');
+    }
+
+    function removeSavedTicket(ticketId) {
+      const before = savedTickets.length;
+      savedTickets = savedTickets.filter(ticket => ticket.id !== ticketId);
+      if (savedTickets.length === before) {
+        return;
+      }
+      renderSavedTickets();
+      setStatus('已删除一注固定号码。', 'ok');
+    }
+
+    function applyDraws(draws, sourceLabel = '未知来源', generatedAt = null) {
+      const normalized = draws
+        .map((draw, index) => normalizeOneDraw(draw, index))
+        .filter(Boolean)
+        .sort(compareDrawDesc)
+        .slice(0, MAX_RECENT_DRAWS);
+
+      if (!normalized.length) {
+        throw new Error('无法识别到最近开奖数据');
+      }
+
+      const preferredCount = currentState.draws.length
+        ? currentState.exclusionDrawCount
+        : Math.min(DEFAULT_EXCLUSION_DRAW_COUNT, normalized.length);
+
+      currentState = {
+        ...currentState,
+        draws: normalized,
+        source: sourceLabel,
+        generatedAt,
+        exclusionDrawCount: clampExclusionDrawCount(preferredCount, normalized.length)
+      };
+
+      recomputeFromCurrentDraws(sourceLabel, true);
+    }
+
+    function describeError(err) {
+      if (!err) return '未知错误';
+      if (err.name === 'AbortError') return '请求超时';
+      if (err instanceof TypeError) return '网络加载失败';
+      return err.message || String(err);
+    }
+
+    async function fetchJsonWithTimeout(candidate, timeoutMs = 15000) {
+      const { url, sourceLabel: defaultSourceLabel } = candidate;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const response = await fetch(url, {
+          method: 'GET',
+          signal: controller.signal,
+          headers: { Accept: 'application/json' },
+          cache: 'no-store'
+        });
+        const rawText = await response.text();
+        let payload = null;
+        try {
+          payload = rawText ? JSON.parse(rawText) : null;
+        } catch (err) {
+          if (!response.ok) {
+            throw new Error('数据文件响应不是有效 JSON');
+          }
+          throw new Error('数据文件格式不是有效 JSON');
+        }
+        if (!response.ok) {
+          const fallback = Array.isArray(payload?.fallback) ? payload.fallback : null;
+          const message = payload?.details || payload?.message || ('数据文件返回状态 ' + response.status);
+          const error = new Error(message);
+          error.fallback = fallback;
+          throw error;
+        }
+        return {
+          data: payload,
+          sourceLabel: payload?.sourceLabel || defaultSourceLabel || '静态数据文件',
+          generatedAt: payload?.generatedAt || null
+        };
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
+    async function tryRemoteSources() {
+      let lastError = null;
+      for (const candidate of API_CANDIDATES) {
+        try {
+          const { data, sourceLabel, generatedAt } = await fetchJsonWithTimeout(candidate, 15000);
+          const drawArray = extractDrawArray(data);
+          if (!drawArray.length) {
+            throw new Error('数据文件里的开奖结构无法识别');
+          }
+          applyDraws(drawArray, sourceLabel, generatedAt);
+          return sourceLabel;
+        } catch (err) {
+          lastError = err;
+          console.warn('静态数据文件读取失败:', candidate.url, err);
+        }
+      }
+      throw lastError || new Error('所有数据来源都不可用');
+    }
+
+    function applyManualInput() {
+      try {
+        const parsed = JSON.parse(els.manualInput.value);
+        const drawArray = extractDrawArray(parsed);
+        if (!drawArray.length) {
+          throw new Error('手动数据里没有可识别的开奖数组');
+        }
+        applyDraws(drawArray, '手动输入', parsed?.generatedAt || null);
+        setStatus('已使用手动数据', 'ok');
+      } catch (err) {
+        console.error(err);
+        setStatus('手动数据格式不正确：' + describeError(err), 'bad');
+      }
+    }
+
+    function applyFallbackDraws() {
+      try {
+        applyDraws(FALLBACK_DRAWS, '内置样例');
+        setStatus('已载入内置样例', 'warn');
+      } catch (err) {
+        console.error(err);
+        setStatus('内置样例载入失败：' + describeError(err), 'bad');
+      }
+    }
+
+    async function fetchLatestDraws() {
+      setStatus('正在读取最新开奖数据文件…', 'warn');
+      try {
+        const sourceLabel = await tryRemoteSources();
+        setStatus(`已从 ${sourceLabel} 读取最近已发布开奖，默认剔除最近 2 期。`, 'ok');
+      } catch (err) {
+        console.error(err);
+        if (err?.name === 'AbortError') {
+          applyDraws(FALLBACK_DRAWS, '内置样例');
+          setStatus('读取超时，已先显示内置样例；你也可以稍后再刷新最新开奖。', 'warn');
+          return;
+        }
+        if (Array.isArray(err.fallback)) {
+          applyDraws(err.fallback, '内置样例');
+          setStatus('数据文件读取失败，已显示内置样例：' + describeError(err), 'warn');
+          return;
+        }
+        applyDraws(FALLBACK_DRAWS, '内置样例');
+        setStatus('数据文件读取失败，已显示内置样例：' + describeError(err), 'warn');
+      }
+    }
+
+    function assert(condition, message) {
+      if (!condition) throw new Error(message);
+    }
+
+    function restoreRenderedState(savedState) {
+      if (!savedState) {
+        return;
+      }
+
+      currentState = savedState.state;
+      currentSelection = savedState.selection;
+      savedTickets = savedState.savedTickets;
+      nextTicketId = savedState.nextTicketId;
+      renderAll(false);
+      els.statusText.textContent = savedState.statusText;
+      els.statusText.className = savedState.statusClassName;
+      els.lastUpdated.textContent = savedState.lastUpdatedText;
+      els.dataSource.textContent = savedState.dataSourceText;
+    }
+
+    function runTests() {
+      const logs = [];
+      const savedState = {
+        state: JSON.parse(JSON.stringify(currentState)),
+        selection: JSON.parse(JSON.stringify(currentSelection)),
+        savedTickets: JSON.parse(JSON.stringify(savedTickets)),
+        nextTicketId,
+        statusText: els.statusText.textContent,
+        statusClassName: els.statusText.className,
+        lastUpdatedText: els.lastUpdated.textContent,
+        dataSourceText: els.dataSource.textContent
+      };
+
+      function test(name, fn) {
+        try {
+          fn();
+          logs.push('PASS  ' + name);
+        } catch (err) {
+          logs.push('FAIL  ' + name + ' -> ' + (err.message || String(err)));
+        }
+      }
+
+      test('normalizeOneDraw 能解析标准结构', () => {
+        const draw = normalizeOneDraw({ date: '2026-03-31', numbers: [4, 15, 28, 37, 44], stars: [2, 9] });
+        assert(draw !== null, '应成功解析');
+        assert(draw.numbers.join(',') === '4,15,28,37,44', '主号不正确');
+        assert(draw.stars.join(',') === '2,9', '星号不正确');
+      });
+
+      test('normalizeOneDraw 能解析 result 数组结构', () => {
+        const draw = normalizeOneDraw({ result: [4, 15, 28, 37, 44, 2, 9] });
+        assert(draw !== null, '应成功解析');
+        assert(draw.numbers.length === 5, '主号数量不正确');
+        assert(draw.stars.length === 2, '星号数量不正确');
+      });
+
+      test('normalizeOneDraw 遇到非法号码会返回 null', () => {
+        const draw = normalizeOneDraw({ numbers: [0, 1, 2, 3, 4], stars: [1, 2] });
+        assert(draw === null, '非法主号应返回 null');
+      });
+
+      test('applyDraws 默认剔除最近两期号码', () => {
+        currentState.exclusionDrawCount = DEFAULT_EXCLUSION_DRAW_COUNT;
+        applyDraws([
+          { date: '2026-03-31', numbers: [1, 2, 3, 4, 5], stars: [1, 2] },
+          { date: '2026-03-28', numbers: [6, 7, 8, 9, 10], stars: [3, 4] },
+          { date: '2026-03-25', numbers: [11, 12, 13, 14, 15], stars: [5, 6] }
+        ], '测试数据');
+        assert(currentState.exclusionDrawCount === 2, '默认应剔除最近 2 期');
+        assert(currentState.excludedMain.join(',') === '1,2,3,4,5,6,7,8,9,10', '剔除主号不正确');
+        assert(currentState.availableMain.includes(11), '剩余主号池应包含 11');
+      });
+
+      test('切换剔除期数会立刻更新结果', () => {
+        updateExclusionDrawCount(3);
+        assert(currentState.exclusionDrawCount === 3, '应切换到最近 3 期');
+        assert(!currentState.availableMain.includes(11), '切换后应剔除第 3 期主号');
+        assert(currentState.excludedStars.join(',') === '1,2,3,4,5,6', '切换后星号剔除不正确');
+      });
+
+      test('extractDrawArray 能从 data 字段中提取数组', () => {
+        const out = extractDrawArray({ data: [{ numbers: [1, 2, 3, 4, 5], stars: [1, 2] }] });
+        assert(Array.isArray(out) && out.length === 1, '提取失败');
+      });
+
+      test('extractDrawArray 找不到数组时返回空数组', () => {
+        const out = extractDrawArray({ hello: 'world' });
+        assert(Array.isArray(out) && out.length === 0, '应返回空数组');
+      });
+
+      test('describeError 能识别 TypeError', () => {
+        assert(describeError(new TypeError('Load failed')) === '网络加载失败', 'TypeError 描述不正确');
+      });
+
+      test('saveCurrentTicket 会固定当前号码并清空当前选择', () => {
+        currentState.availableMain = MAIN_POOL.slice();
+        currentState.availableStars = STAR_POOL.slice();
+        savedTickets = [];
+        nextTicketId = 1;
+        currentSelection = { main: [1, 2, 3, 5, 6], stars: [7, 8] };
+        saveCurrentTicket();
+        assert(savedTickets.length === 1, '应固定一注号码');
+        assert(savedTickets[0].main.join(',') === '1,2,3,5,6', '固定主号不正确');
+        assert(savedTickets[0].stars.join(',') === '7,8', '固定星号不正确');
+        assert(currentSelection.main.length === 0 && currentSelection.stars.length === 0, '固定后应清空当前选择');
+      });
+
+      test('removeSavedTicket 会删除已固定号码', () => {
+        savedTickets = [{ id: 99, main: [1, 2, 3, 5, 6], stars: [7, 8] }];
+        removeSavedTicket(99);
+        assert(savedTickets.length === 0, '应删除固定号码');
+      });
+
+      restoreRenderedState(savedState);
+      els.testLog.textContent = logs.join('\n');
+    }
+
+    document.getElementById('refreshBtn').addEventListener('click', () => {
+      fetchLatestDraws().catch(err => {
+        console.error('刷新失败', err);
+        setStatus('刷新失败：' + describeError(err), 'bad');
+      });
+    });
+
+    document.getElementById('manualApplyBtn').addEventListener('click', applyManualInput);
+    document.getElementById('useFallbackBtn').addEventListener('click', applyFallbackDraws);
+    document.getElementById('runTestsBtn').addEventListener('click', runTests);
+    els.saveTicketBtn.addEventListener('click', saveCurrentTicket);
+    els.clearSelectionBtn.addEventListener('click', clearSelection);
+    els.exclusionCountControls.addEventListener('click', event => {
+      const target = event.target.closest('[data-exclusion-count]');
+      if (!target || target.disabled) return;
+      updateExclusionDrawCount(Number(target.dataset.exclusionCount));
+    });
+    els.savedTickets.addEventListener('click', event => {
+      const target = event.target.closest('[data-ticket-id]');
+      if (!target) return;
+      removeSavedTicket(Number(target.dataset.ticketId));
+    });
+    els.availableMain.addEventListener('click', event => {
+      const target = event.target.closest('[data-select-type="main"]');
+      if (!target) return;
+      toggleSelection('main', Number(target.dataset.value));
+    });
+    els.availableStars.addEventListener('click', event => {
+      const target = event.target.closest('[data-select-type="stars"]');
+      if (!target) return;
+      toggleSelection('stars', Number(target.dataset.value));
+    });
+
+    renderAll(false);
+
+    fetchLatestDraws()
+      .catch(err => {
+        console.error('初始化加载失败', err);
+        setStatus('初始化加载失败：' + describeError(err), 'bad');
+      })
+      .finally(() => {
+        runTests();
+      });
+  </script>
+</body>
+</html>

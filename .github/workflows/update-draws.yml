@@ -1,0 +1,69 @@
+name: Update Draw Data
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */4 * * *"
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: update-draw-data
+  cancel-in-progress: true
+
+jobs:
+  update-draws:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Refresh draw data file
+        run: python scripts/update_draws.py
+
+      - name: Commit updated draw data
+        id: commit_data
+        run: |
+          if git diff --quiet -- data/draws.json; then
+            echo "No draw data changes detected."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/draws.json
+          git commit -m "Update draw data"
+          git push
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Configure Pages
+        if: steps.commit_data.outputs.changed == 'true'
+        uses: actions/configure-pages@v5
+
+      - name: Prepare static artifact
+        if: steps.commit_data.outputs.changed == 'true'
+        run: |
+          rm -rf dist
+          mkdir -p dist/data
+          cp index.html dist/index.html
+          cp favicon.ico dist/favicon.ico
+          cp .nojekyll dist/.nojekyll
+          cp data/draws.json dist/data/draws.json
+
+      - name: Upload Pages artifact
+        if: steps.commit_data.outputs.changed == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Deploy updated Pages artifact
+        if: steps.commit_data.outputs.changed == 'true'
+        uses: actions/deploy-pages@v4
