@@ -3,7 +3,12 @@ name: Update Draw Data
 on:
   workflow_dispatch:
   schedule:
-    - cron: "17 */4 * * *"
+    # GitHub Actions cron uses UTC only.
+    # We trigger at both 20:00 and 21:00 UTC on Wednesday/Friday,
+    # then keep only the run that matches 22:00 in Europe/Paris
+    # so CET and CEST are both covered correctly.
+    - cron: "0 20 * * 3,5"
+    - cron: "0 21 * * 3,5"
 
 permissions:
   contents: write
@@ -21,16 +26,33 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Validate France local schedule window
+        id: local_time_guard
+        if: github.event_name == 'schedule'
+        run: |
+          local_hour="$(TZ=Europe/Paris date +%H)"
+          local_day="$(TZ=Europe/Paris date +%u)"
+          if [ "$local_hour" = "22" ] && { [ "$local_day" = "3" ] || [ "$local_day" = "5" ]; }; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            echo "Matched Wednesday/Friday 22:00 in Europe/Paris."
+          else
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping because current Europe/Paris time is not Wednesday/Friday 22:00."
+          fi
+
       - name: Set up Python
+        if: github.event_name != 'schedule' || steps.local_time_guard.outputs.should_run == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
       - name: Refresh draw data file
+        if: github.event_name != 'schedule' || steps.local_time_guard.outputs.should_run == 'true'
         run: python scripts/update_draws.py
 
       - name: Commit updated draw data
         id: commit_data
+        if: github.event_name != 'schedule' || steps.local_time_guard.outputs.should_run == 'true'
         run: |
           if git diff --quiet -- data/draws.json; then
             echo "No draw data changes detected."
@@ -45,11 +67,11 @@ jobs:
           echo "changed=true" >> "$GITHUB_OUTPUT"
 
       - name: Configure Pages
-        if: steps.commit_data.outputs.changed == 'true'
+        if: (github.event_name != 'schedule' || steps.local_time_guard.outputs.should_run == 'true') && steps.commit_data.outputs.changed == 'true'
         uses: actions/configure-pages@v5
 
       - name: Prepare static artifact
-        if: steps.commit_data.outputs.changed == 'true'
+        if: (github.event_name != 'schedule' || steps.local_time_guard.outputs.should_run == 'true') && steps.commit_data.outputs.changed == 'true'
         run: |
           rm -rf dist
           mkdir -p dist/data
@@ -59,11 +81,11 @@ jobs:
           cp data/draws.json dist/data/draws.json
 
       - name: Upload Pages artifact
-        if: steps.commit_data.outputs.changed == 'true'
+        if: (github.event_name != 'schedule' || steps.local_time_guard.outputs.should_run == 'true') && steps.commit_data.outputs.changed == 'true'
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
       - name: Deploy updated Pages artifact
-        if: steps.commit_data.outputs.changed == 'true'
+        if: (github.event_name != 'schedule' || steps.local_time_guard.outputs.should_run == 'true') && steps.commit_data.outputs.changed == 'true'
         uses: actions/deploy-pages@v4
