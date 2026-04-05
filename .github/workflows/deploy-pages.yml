@@ -36,6 +36,7 @@ jobs:
           cp favicon.ico dist/favicon.ico
           cp .nojekyll dist/.nojekyll
           cp data/draws.json dist/data/draws.json
+          cp data/tens-patterns.json dist/data/tens-patterns.json
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

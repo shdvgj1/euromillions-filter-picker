@@ -6,8 +6,9 @@
 
 - 页面前端仍然是单文件 [index.html](./index.html)
 - 最近开奖数据来自仓库里的 [data/draws.json](./data/draws.json)
+- 历史十位数组来自仓库里的 [data/tens-patterns.json](./data/tens-patterns.json)
 - [scripts/update_draws.py](./scripts/update_draws.py) 用于抓取最新 5 期 EuroMillions 开奖
-- GitHub Actions 会自动更新 `data/draws.json`
+- GitHub Actions 会自动更新 `data/draws.json` 和 `data/tens-patterns.json`
 - GitHub Pages 负责发布站点
 
 ## 本地运行
@@ -52,6 +53,7 @@ python3 server.py --host 127.0.0.1 --port 8000
 - 页面打开时读取 `data/draws.json`
 - 默认剔除最近 2 期
 - 可切换剔除最近 1/2/3/4/5 期
+- 页面包含一个“十位数组推荐”区域，基于历史十位数组做综合推荐
 - GitHub Actions 会在法国当地时间 `Europe/Paris` 的每周三、周五 `22:00` 刷新数据文件
 - 如果静态数据文件暂时不可用，页面会退回到内置样例
 

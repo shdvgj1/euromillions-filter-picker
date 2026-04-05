@@ -11,7 +11,8 @@ from urllib import error, request
 RESULTS_PAGE_URL = "https://irish.national-lottery.com/euromillions/results"
 MAX_RECENT_DRAWS = 5
 ROOT_DIR = Path(__file__).resolve().parents[1]
-OUTPUT_PATH = ROOT_DIR / "data" / "draws.json"
+DRAWS_OUTPUT_PATH = ROOT_DIR / "data" / "draws.json"
+TENS_PATTERNS_OUTPUT_PATH = ROOT_DIR / "data" / "tens-patterns.json"
 
 
 def fetch_upstream_text(url: str) -> str:
@@ -127,15 +128,80 @@ def parse_results_page(html: str) -> list[dict[str, Any]]:
     return unique_draws[:MAX_RECENT_DRAWS]
 
 
-def write_output(draws: list[dict[str, Any]]) -> None:
+def main_number_to_decade(value: int) -> int:
+    if value == 50:
+        return 5
+    return (value - 1) // 10
+
+
+def draw_to_tens_pattern(draw: dict[str, Any]) -> list[int]:
+    return sorted(main_number_to_decade(int(number)) for number in draw["numbers"])
+
+
+def load_existing_tens_patterns() -> list[dict[str, Any]]:
+    if not TENS_PATTERNS_OUTPUT_PATH.exists():
+        return []
+    payload = json.loads(TENS_PATTERNS_OUTPUT_PATH.read_text(encoding="utf-8"))
+    items = payload.get("items")
+    if not isinstance(items, list):
+        return []
+    normalized: list[dict[str, Any]] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        date = str(item.get("date") or "").strip()
+        pattern = item.get("pattern")
+        if not date or not isinstance(pattern, list) or len(pattern) != 5:
+            continue
+        normalized.append({"date": date, "pattern": [int(v) for v in pattern]})
+    return normalized
+
+
+def merge_tens_patterns(draws: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    existing_items = load_existing_tens_patterns()
+    existing_by_date = {str(item["date"]): item for item in existing_items}
+
+    merged: list[dict[str, Any]] = []
+    seen_dates: set[str] = set()
+
+    for draw in draws:
+        date = str(draw["date"])
+        merged.append({"date": date, "pattern": draw_to_tens_pattern(draw)})
+        seen_dates.add(date)
+
+    for item in existing_items:
+        date = str(item["date"])
+        if date in seen_dates:
+            continue
+        merged.append(item)
+        seen_dates.add(date)
+
+    return merged
+
+
+def write_draws_output(draws: list[dict[str, Any]], generated_at: str) -> None:
     payload = {
-        "generatedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "generatedAt": generated_at,
         "sourceLabel": "GitHub 静态数据",
         "sourceUrl": RESULTS_PAGE_URL,
         "draws": draws,
     }
-    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT_PATH.write_text(
+    DRAWS_OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    DRAWS_OUTPUT_PATH.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
+def write_tens_patterns_output(items: list[dict[str, Any]], generated_at: str) -> None:
+    payload = {
+        "generatedAt": generated_at,
+        "sourceLabel": "历史十位数组",
+        "sourceUrl": RESULTS_PAGE_URL,
+        "items": items,
+    }
+    TENS_PATTERNS_OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    TENS_PATTERNS_OUTPUT_PATH.write_text(
         json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
@@ -144,8 +210,12 @@ def write_output(draws: list[dict[str, Any]]) -> None:
 def main() -> None:
     html = fetch_upstream_text(RESULTS_PAGE_URL)
     draws = parse_results_page(html)
-    write_output(draws)
-    print(f"Wrote {len(draws)} draws to {OUTPUT_PATH}")
+    generated_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    tens_patterns = merge_tens_patterns(draws)
+    write_draws_output(draws, generated_at)
+    write_tens_patterns_output(tens_patterns, generated_at)
+    print(f"Wrote {len(draws)} draws to {DRAWS_OUTPUT_PATH}")
+    print(f"Wrote {len(tens_patterns)} tens patterns to {TENS_PATTERNS_OUTPUT_PATH}")
 
 
 if __name__ == "__main__":
