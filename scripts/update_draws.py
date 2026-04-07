@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import json
 import re
 from datetime import datetime, timezone
@@ -12,7 +13,13 @@ RESULTS_PAGE_URL = "https://irish.national-lottery.com/euromillions/results"
 MAX_RECENT_DRAWS = 5
 ROOT_DIR = Path(__file__).resolve().parents[1]
 DRAWS_OUTPUT_PATH = ROOT_DIR / "data" / "draws.json"
+HISTORY_DRAWS_OUTPUT_PATH = ROOT_DIR / "data" / "history-draws.json"
 TENS_PATTERNS_OUTPUT_PATH = ROOT_DIR / "data" / "tens-patterns.json"
+ONES_PATTERNS_OUTPUT_PATH = ROOT_DIR / "data" / "ones-patterns.json"
+SEED_HISTORY_CSV_CANDIDATES = [
+    ROOT_DIR / "euromillions.csv",
+    Path.home() / "Downloads" / "euromillions.csv",
+]
 
 
 def fetch_upstream_text(url: str) -> str:
@@ -138,10 +145,81 @@ def draw_to_tens_pattern(draw: dict[str, Any]) -> list[int]:
     return sorted(main_number_to_decade(int(number)) for number in draw["numbers"])
 
 
-def load_existing_tens_patterns() -> list[dict[str, Any]]:
-    if not TENS_PATTERNS_OUTPUT_PATH.exists():
+def draw_to_units_pattern(draw: dict[str, Any]) -> list[int]:
+    return [int(number) % 10 for number in draw["numbers"]]
+
+
+def normalize_draw_item(raw: Any) -> dict[str, Any] | None:
+    if not isinstance(raw, dict):
+        return None
+    date = str(raw.get("date") or raw.get("id") or "").strip()
+    numbers = raw.get("numbers")
+    stars = raw.get("stars")
+    if not date or not isinstance(numbers, list) or not isinstance(stars, list):
+        return None
+    if len(numbers) != 5 or len(stars) != 2:
+        return None
+
+    clean_numbers = sorted(int(value) for value in numbers)
+    clean_stars = sorted(int(value) for value in stars)
+    if len(set(clean_numbers)) != 5 or len(set(clean_stars)) != 2:
+        return None
+    if any(value < 1 or value > 50 for value in clean_numbers):
+        return None
+    if any(value < 1 or value > 12 for value in clean_stars):
+        return None
+
+    return {
+        "id": date,
+        "date": date,
+        "numbers": clean_numbers,
+        "stars": clean_stars,
+    }
+
+
+def load_seed_history_from_csv(csv_path: Path) -> list[dict[str, Any]]:
+    with csv_path.open("r", encoding="utf-8-sig", newline="") as handle:
+        reader = csv.DictReader(handle)
+        rows = list(reader)
+
+    seed_items: list[dict[str, Any]] = []
+    for row in rows:
+        raw_date = str(row.get("date (dd-mm-yyyy)") or "").strip()
+        if not raw_date:
+            continue
+        parsed_date = datetime.strptime(raw_date, "%d-%m-%Y").date().isoformat()
+        draw = normalize_draw_item(
+            {
+                "date": parsed_date,
+                "numbers": [row.get(f"num_{index}") for index in range(1, 6)],
+                "stars": [row.get(f"star_{index}") for index in range(1, 3)],
+            }
+        )
+        if draw:
+            seed_items.append(draw)
+
+    seed_items.sort(key=lambda item: item["date"], reverse=True)
+    return seed_items
+
+
+def load_existing_draw_items(output_path: Path) -> list[dict[str, Any]]:
+    if output_path.exists():
+        payload = json.loads(output_path.read_text(encoding="utf-8"))
+        items = payload.get("draws")
+        if isinstance(items, list):
+            normalized = [normalize_draw_item(item) for item in items]
+            return [item for item in normalized if item]
+
+    for candidate in SEED_HISTORY_CSV_CANDIDATES:
+        if candidate.exists():
+            return load_seed_history_from_csv(candidate)
+    return []
+
+
+def load_existing_pattern_items(output_path: Path) -> list[dict[str, Any]]:
+    if not output_path.exists():
         return []
-    payload = json.loads(TENS_PATTERNS_OUTPUT_PATH.read_text(encoding="utf-8"))
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
     items = payload.get("items")
     if not isinstance(items, list):
         return []
@@ -157,16 +235,19 @@ def load_existing_tens_patterns() -> list[dict[str, Any]]:
     return normalized
 
 
-def merge_tens_patterns(draws: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    existing_items = load_existing_tens_patterns()
-    existing_by_date = {str(item["date"]): item for item in existing_items}
-
+def merge_pattern_items(
+    draws: list[dict[str, Any]],
+    *,
+    output_path: Path,
+    pattern_builder,
+) -> list[dict[str, Any]]:
+    existing_items = load_existing_pattern_items(output_path)
     merged: list[dict[str, Any]] = []
     seen_dates: set[str] = set()
 
     for draw in draws:
         date = str(draw["date"])
-        merged.append({"date": date, "pattern": draw_to_tens_pattern(draw)})
+        merged.append({"date": date, "pattern": pattern_builder(draw)})
         seen_dates.add(date)
 
     for item in existing_items:
@@ -179,6 +260,45 @@ def merge_tens_patterns(draws: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return merged
 
 
+def merge_history_draws(draws: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    existing_items = load_existing_draw_items(HISTORY_DRAWS_OUTPUT_PATH)
+    merged: list[dict[str, Any]] = []
+    seen_dates: set[str] = set()
+
+    for draw in draws:
+        normalized = normalize_draw_item(draw)
+        if not normalized:
+            continue
+        date = str(normalized["date"])
+        merged.append(normalized)
+        seen_dates.add(date)
+
+    for item in existing_items:
+        date = str(item["date"])
+        if date in seen_dates:
+            continue
+        merged.append(item)
+        seen_dates.add(date)
+
+    return merged
+
+
+def merge_tens_patterns(draws: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return merge_pattern_items(
+        draws,
+        output_path=TENS_PATTERNS_OUTPUT_PATH,
+        pattern_builder=draw_to_tens_pattern,
+    )
+
+
+def merge_ones_patterns(draws: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return merge_pattern_items(
+        draws,
+        output_path=ONES_PATTERNS_OUTPUT_PATH,
+        pattern_builder=draw_to_units_pattern,
+    )
+
+
 def write_draws_output(draws: list[dict[str, Any]], generated_at: str) -> None:
     payload = {
         "generatedAt": generated_at,
@@ -188,6 +308,20 @@ def write_draws_output(draws: list[dict[str, Any]], generated_at: str) -> None:
     }
     DRAWS_OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     DRAWS_OUTPUT_PATH.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
+def write_history_draws_output(items: list[dict[str, Any]], generated_at: str) -> None:
+    payload = {
+        "generatedAt": generated_at,
+        "sourceLabel": "历史开奖（主号+星号）",
+        "sourceUrl": RESULTS_PAGE_URL,
+        "draws": items,
+    }
+    HISTORY_DRAWS_OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    HISTORY_DRAWS_OUTPUT_PATH.write_text(
         json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
@@ -207,15 +341,35 @@ def write_tens_patterns_output(items: list[dict[str, Any]], generated_at: str) -
     )
 
 
+def write_ones_patterns_output(items: list[dict[str, Any]], generated_at: str) -> None:
+    payload = {
+        "generatedAt": generated_at,
+        "sourceLabel": "历史个位数组",
+        "sourceUrl": RESULTS_PAGE_URL,
+        "items": items,
+    }
+    ONES_PATTERNS_OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    ONES_PATTERNS_OUTPUT_PATH.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
 def main() -> None:
     html = fetch_upstream_text(RESULTS_PAGE_URL)
     draws = parse_results_page(html)
     generated_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    history_draws = merge_history_draws(draws)
     tens_patterns = merge_tens_patterns(draws)
+    ones_patterns = merge_ones_patterns(draws)
     write_draws_output(draws, generated_at)
+    write_history_draws_output(history_draws, generated_at)
     write_tens_patterns_output(tens_patterns, generated_at)
+    write_ones_patterns_output(ones_patterns, generated_at)
     print(f"Wrote {len(draws)} draws to {DRAWS_OUTPUT_PATH}")
+    print(f"Wrote {len(history_draws)} historical draws to {HISTORY_DRAWS_OUTPUT_PATH}")
     print(f"Wrote {len(tens_patterns)} tens patterns to {TENS_PATTERNS_OUTPUT_PATH}")
+    print(f"Wrote {len(ones_patterns)} ones patterns to {ONES_PATTERNS_OUTPUT_PATH}")
 
 
 if __name__ == "__main__":

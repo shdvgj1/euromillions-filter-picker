@@ -54,14 +54,14 @@ jobs:
         id: commit_data
         if: github.event_name != 'schedule' || steps.local_time_guard.outputs.should_run == 'true'
         run: |
-          if git diff --quiet -- data/draws.json data/tens-patterns.json; then
+          if git diff --quiet -- data/draws.json data/history-draws.json data/tens-patterns.json data/ones-patterns.json; then
             echo "No data changes detected."
             echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/draws.json data/tens-patterns.json
+          git add data/draws.json data/history-draws.json data/tens-patterns.json data/ones-patterns.json
           git commit -m "Update draw data"
           git push
           echo "changed=true" >> "$GITHUB_OUTPUT"
@@ -79,7 +79,9 @@ jobs:
           cp favicon.ico dist/favicon.ico
           cp .nojekyll dist/.nojekyll
           cp data/draws.json dist/data/draws.json
+          cp data/history-draws.json dist/data/history-draws.json
           cp data/tens-patterns.json dist/data/tens-patterns.json
+          cp data/ones-patterns.json dist/data/ones-patterns.json
 
       - name: Upload Pages artifact
         if: (github.event_name != 'schedule' || steps.local_time_guard.outputs.should_run == 'true') && steps.commit_data.outputs.changed == 'true'

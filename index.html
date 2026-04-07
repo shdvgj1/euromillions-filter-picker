@@ -574,6 +574,185 @@
       <section class="card span-12">
         <div class="row-between">
           <div>
+            <div class="label">个位数组推荐</div>
+            <div class="muted" id="onesRecommendationSummary">基于历史主号个位数组的多维评分综合计算，仅供参考；这个功能只针对主号，不包含星号。</div>
+          </div>
+          <button class="btn-secondary" id="onesRecomputeRecommendBtn">重新计算个位推荐</button>
+        </div>
+        <div class="control-grid">
+          <div class="control-item">
+            <label for="onesRecommendTopInput">Top-N</label>
+            <input class="number-input" id="onesRecommendTopInput" type="number" min="1" max="20" value="10" />
+          </div>
+          <div class="control-item">
+            <label for="onesRecommendSamplesInput">随机样本数</label>
+            <input class="number-input" id="onesRecommendSamplesInput" type="number" min="1" max="20" value="10" />
+          </div>
+          <div class="control-item">
+            <label for="onesRecommendUnseenInput">未出现候选数</label>
+            <input class="number-input" id="onesRecommendUnseenInput" type="number" min="1" max="20" value="10" />
+          </div>
+          <div class="control-item">
+            <label for="onesRecommendSeedInput">种子</label>
+            <input class="text-input" id="onesRecommendSeedInput" type="text" placeholder="留空则使用默认种子" />
+          </div>
+          <div class="control-item">
+            <label class="check-label" for="onesRecommendExpandInput">
+              <input id="onesRecommendExpandInput" type="checkbox" checked />
+              <span>展开为当前剩余主号</span>
+            </label>
+          </div>
+          <div class="control-item">
+            <label class="check-label" for="onesRecommendShowUnseenInput">
+              <input id="onesRecommendShowUnseenInput" type="checkbox" />
+              <span>显示历史未出现高分组合</span>
+            </label>
+          </div>
+        </div>
+        <div class="metrics" id="onesRecommendationMeta"></div>
+        <div class="recommend-columns">
+          <div>
+            <div class="label">Top-N 确定性推荐</div>
+            <div class="table-wrap">
+              <table class="result-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>个位数组</th>
+                    <th>总分</th>
+                    <th>和值</th>
+                    <th>无序</th>
+                    <th>有序</th>
+                    <th>奇偶</th>
+                    <th>大小</th>
+                    <th>主号展开</th>
+                  </tr>
+                </thead>
+                <tbody id="onesRecommendationTopBody">
+                  <tr><td colspan="9" class="muted">正在等待历史个位数组数据…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div>
+            <div class="label">加权随机样本</div>
+            <div class="table-wrap">
+              <table class="result-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>个位数组</th>
+                    <th>总分</th>
+                    <th>和值</th>
+                    <th>无序</th>
+                    <th>有序</th>
+                    <th>奇偶</th>
+                    <th>大小</th>
+                    <th>主号展开</th>
+                  </tr>
+                </thead>
+                <tbody id="onesRecommendationSampleBody">
+                  <tr><td colspan="9" class="muted">正在等待历史个位数组数据…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div id="onesRecommendationUnseenSection" style="display:none; margin-top:16px;">
+          <div class="label">历史未出现但综合评分较高</div>
+          <div class="table-wrap">
+            <table class="result-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>个位数组</th>
+                  <th>总分</th>
+                  <th>和值</th>
+                  <th>无序</th>
+                  <th>有序</th>
+                  <th>奇偶</th>
+                  <th>大小</th>
+                  <th>主号展开</th>
+                </tr>
+              </thead>
+              <tbody id="onesRecommendationUnseenBody">
+                <tr><td colspan="9" class="muted">勾选“显示历史未出现高分组合”后，这里会显示额外参考。</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="note" style="margin-top:14px;">个位数组说明：数组顺序对应排序后 5 个主号从小到大的个位；`0` 表示尾数 `0`。例如 `[8, 7, 9, 6, 9]` 表示 5 个主号排序后，个位依次是 `8 / 7 / 9 / 6 / 9`。展开主号时会优先使用你当前剔除规则下的剩余主号池。</div>
+      </section>
+
+      <section class="card span-12">
+        <div class="row-between">
+          <div>
+            <div class="label">联合推荐（主号 + 星号）</div>
+            <div class="muted" id="jointRecommendationSummary">这里会把主号十位数组、主号个位数组、真实号码结构和星号结构一起考虑，输出最终推荐票；只作为手动选号参考，不代表预测。</div>
+          </div>
+          <button class="btn-secondary" id="jointRecomputeRecommendBtn">重新计算联合推荐</button>
+        </div>
+        <div class="control-grid">
+          <div class="control-item">
+            <label for="jointRecommendTopInput">Top-N</label>
+            <input class="number-input" id="jointRecommendTopInput" type="number" min="1" max="20" value="10" />
+          </div>
+          <div class="control-item">
+            <label for="jointRecommendTensTopInput">十位候选数</label>
+            <input class="number-input" id="jointRecommendTensTopInput" type="number" min="5" max="50" value="20" />
+          </div>
+          <div class="control-item">
+            <label for="jointRecommendUnitsTopInput">个位候选数</label>
+            <input class="number-input" id="jointRecommendUnitsTopInput" type="number" min="20" max="500" value="300" />
+          </div>
+          <div class="control-item">
+            <label for="jointRecommendStarTopInput">星号候选数</label>
+            <input class="number-input" id="jointRecommendStarTopInput" type="number" min="2" max="20" value="5" />
+          </div>
+          <div class="control-item">
+            <label for="jointRecommendTensStrengthInput">十位平滑强度</label>
+            <input class="number-input" id="jointRecommendTensStrengthInput" type="number" min="1" max="50" value="8" />
+          </div>
+          <div class="control-item">
+            <label for="jointRecommendStarStrengthInput">星号平滑强度</label>
+            <input class="number-input" id="jointRecommendStarStrengthInput" type="number" min="1" max="50" value="6" />
+          </div>
+          <div class="control-item">
+            <label class="check-label" for="jointRecommendUseAvailableInput">
+              <input id="jointRecommendUseAvailableInput" type="checkbox" checked />
+              <span>仅用当前剩余号码池</span>
+            </label>
+          </div>
+        </div>
+        <div class="metrics" id="jointRecommendationMeta"></div>
+        <div class="table-wrap">
+          <table class="result-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>主号码</th>
+                <th>星号</th>
+                <th>综合分</th>
+                <th>十位分</th>
+                <th>个位分</th>
+                <th>结构分</th>
+                <th>星号分</th>
+                <th>十位数组</th>
+                <th>个位数组</th>
+                <th>结构摘要</th>
+              </tr>
+            </thead>
+            <tbody id="jointRecommendationBody">
+              <tr><td colspan="11" class="muted">正在等待历史开奖数据…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="note" style="margin-top:14px;">联合推荐不是把十位 Top1 和个位 Top1 生硬拼接，而是先生成合法主号候选，再结合真实号码结构和星号模型做最终排序。若勾选“仅用当前剩余号码池”，它会自动避开你当前剔除规则下不可选的主号和星号。</div>
+      </section>
+
+      <section class="card span-12">
+        <div class="row-between">
+          <div>
             <div class="label">我的选号</div>
             <div class="muted" id="selectionHint">请在剩余号码池中点击选择 5 个主号和 2 个星号。</div>
           </div>
@@ -634,8 +813,16 @@
       { url: './data/draws.json', sourceLabel: 'GitHub 静态数据' }
     ];
 
+    const HISTORY_DRAW_CANDIDATES = [
+      { url: './data/history-draws.json', sourceLabel: '历史开奖（主号+星号）' }
+    ];
+
     const TENS_PATTERN_CANDIDATES = [
       { url: './data/tens-patterns.json', sourceLabel: '历史十位数组' }
+    ];
+
+    const ONES_PATTERN_CANDIDATES = [
+      { url: './data/ones-patterns.json', sourceLabel: '历史个位数组' }
     ];
 
     const DEFAULT_EXCLUSION_DRAW_COUNT = 2;
@@ -656,6 +843,25 @@
       strength: 8,
       seed: '',
       expand: true
+    };
+
+    const DEFAULT_ONES_RECOMMEND_SETTINGS = {
+      top: 10,
+      samples: 10,
+      unseen: 10,
+      seed: '',
+      expand: true,
+      showUnseen: false
+    };
+
+    const DEFAULT_JOINT_RECOMMEND_SETTINGS = {
+      top: 10,
+      tensTop: 20,
+      unitsTop: 300,
+      starTop: 5,
+      tensStrength: 8,
+      starStrength: 6,
+      useAvailablePool: true
     };
 
     const MAIN_POOL = Array.from({ length: 50 }, (_, i) => i + 1);
@@ -682,6 +888,30 @@
       recommendSeedInput: document.getElementById('recommendSeedInput'),
       recommendExpandInput: document.getElementById('recommendExpandInput'),
       recomputeRecommendBtn: document.getElementById('recomputeRecommendBtn'),
+      onesRecommendationSummary: document.getElementById('onesRecommendationSummary'),
+      onesRecommendationMeta: document.getElementById('onesRecommendationMeta'),
+      onesRecommendationTopBody: document.getElementById('onesRecommendationTopBody'),
+      onesRecommendationSampleBody: document.getElementById('onesRecommendationSampleBody'),
+      onesRecommendationUnseenSection: document.getElementById('onesRecommendationUnseenSection'),
+      onesRecommendationUnseenBody: document.getElementById('onesRecommendationUnseenBody'),
+      onesRecommendTopInput: document.getElementById('onesRecommendTopInput'),
+      onesRecommendSamplesInput: document.getElementById('onesRecommendSamplesInput'),
+      onesRecommendUnseenInput: document.getElementById('onesRecommendUnseenInput'),
+      onesRecommendSeedInput: document.getElementById('onesRecommendSeedInput'),
+      onesRecommendExpandInput: document.getElementById('onesRecommendExpandInput'),
+      onesRecommendShowUnseenInput: document.getElementById('onesRecommendShowUnseenInput'),
+      onesRecomputeRecommendBtn: document.getElementById('onesRecomputeRecommendBtn'),
+      jointRecommendationSummary: document.getElementById('jointRecommendationSummary'),
+      jointRecommendationMeta: document.getElementById('jointRecommendationMeta'),
+      jointRecommendationBody: document.getElementById('jointRecommendationBody'),
+      jointRecommendTopInput: document.getElementById('jointRecommendTopInput'),
+      jointRecommendTensTopInput: document.getElementById('jointRecommendTensTopInput'),
+      jointRecommendUnitsTopInput: document.getElementById('jointRecommendUnitsTopInput'),
+      jointRecommendStarTopInput: document.getElementById('jointRecommendStarTopInput'),
+      jointRecommendTensStrengthInput: document.getElementById('jointRecommendTensStrengthInput'),
+      jointRecommendStarStrengthInput: document.getElementById('jointRecommendStarStrengthInput'),
+      jointRecommendUseAvailableInput: document.getElementById('jointRecommendUseAvailableInput'),
+      jointRecomputeRecommendBtn: document.getElementById('jointRecomputeRecommendBtn'),
       selectedMain: document.getElementById('selectedMain'),
       selectedStars: document.getElementById('selectedStars'),
       selectionHint: document.getElementById('selectionHint'),
@@ -701,7 +931,8 @@
       availableMain: MAIN_POOL.slice(),
       availableStars: STAR_POOL.slice(),
       source: '未初始化',
-      generatedAt: null
+      generatedAt: null,
+      drawSignature: ''
     };
 
     let recommendationState = {
@@ -713,6 +944,32 @@
       summary: null,
       topResults: [],
       sampleResults: [],
+      error: ''
+    };
+
+    let onesRecommendationState = {
+      baseHistory: [],
+      history: [],
+      source: '未加载',
+      generatedAt: null,
+      settings: { ...DEFAULT_ONES_RECOMMEND_SETTINGS },
+      historyDrawSignature: '',
+      model: null,
+      topResults: [],
+      sampleResults: [],
+      unseenResults: [],
+      error: ''
+    };
+
+    let jointRecommendationState = {
+      baseHistory: [],
+      history: [],
+      source: '未加载',
+      generatedAt: null,
+      historyDrawSignature: '',
+      settings: { ...DEFAULT_JOINT_RECOMMEND_SETTINGS },
+      model: null,
+      results: [],
       error: ''
     };
 
@@ -888,6 +1145,18 @@
       return pattern.sort((a, b) => a - b);
     }
 
+    function legacyDecadeAndUnitToNumber(decade, unit) {
+      if (!Number.isInteger(decade) || !Number.isInteger(unit)) return null;
+      if (decade < 0 || decade > 5 || unit < 0 || unit > 9) return null;
+      if (decade === 5) {
+        return unit === 0 ? 50 : null;
+      }
+      if (decade === 0) {
+        return unit === 0 ? 10 : unit;
+      }
+      return decade * 10 + (unit === 0 ? 10 : unit);
+    }
+
     function parsePatternValue(value) {
       if (Array.isArray(value)) {
         return value.map(Number);
@@ -1008,6 +1277,33 @@
 
     function mapToSortedEntries(scoreMap) {
       return Array.from(scoreMap.entries()).sort((a, b) => b[1] - a[1]);
+    }
+
+    function buildCountMap(values) {
+      const counts = new Map();
+      values.forEach(value => {
+        counts.set(value, (counts.get(value) || 0) + 1);
+      });
+      return counts;
+    }
+
+    function normalizeCountMap(countMap) {
+      const entries = Array.from(countMap.entries());
+      const total = entries.reduce((sum, [, value]) => sum + value, 0);
+      if (total <= 0) {
+        const fallback = new Map();
+        entries.forEach(([key]) => fallback.set(key, entries.length ? 1 / entries.length : 0));
+        return fallback;
+      }
+      const normalized = new Map();
+      entries.forEach(([key, value]) => normalized.set(key, value / total));
+      return normalized;
+    }
+
+    function smoothedCounterProbability(value, countMap, smoothing = 1) {
+      const total = Array.from(countMap.values()).reduce((sum, item) => sum + item, 0);
+      const unique = Math.max(countMap.size, 1);
+      return ((countMap.get(value) || 0) + smoothing) / (total + smoothing * unique);
     }
 
     function normalizeSeed(seedValue) {
@@ -1253,6 +1549,1022 @@
       applyTensPatternHistory(fallbackItems, '内置样例', null);
     }
 
+    function numbersToUnitsPattern(numbers) {
+      if (!Array.isArray(numbers) || numbers.length !== 5) return null;
+      const cleanNumbers = numbers.map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= 50);
+      if (cleanNumbers.length !== 5) return null;
+      return cleanNumbers.slice().sort((a, b) => a - b).map(number => number % 10);
+    }
+
+    function normalizeUnitsPatternEntry(raw, index = 0) {
+      if (!raw) return null;
+      const date = pickDirectValue(raw, ['date', 'drawDate', 'draw_date', '日期']) ?? index;
+      let pattern = pickDirectArray(raw, ['pattern', 'units', 'ones', 'Ones', '个位数组']);
+      if (!pattern) {
+        const direct = pickDirectValue(raw, ['pattern', 'units', 'ones', 'Ones', '个位数组']);
+        pattern = parsePatternValue(direct);
+      }
+      if (!pattern && Array.isArray(raw) && raw.length === 5) {
+        pattern = raw.map(Number);
+      }
+      if (!Array.isArray(pattern) || pattern.length !== 5) return null;
+      const cleanPattern = pattern.map(Number);
+      if (cleanPattern.some(value => !Number.isInteger(value) || value < 0 || value > 9)) return null;
+      return {
+        date: String(date),
+        pattern: cleanPattern,
+        key: cleanPattern.join(','),
+        unorderedKey: cleanPattern.slice().sort((a, b) => a - b).join(',')
+      };
+    }
+
+    function mergeUnitsHistoryWithDraws(baseHistory, draws) {
+      const normalizedBase = Array.isArray(baseHistory)
+        ? baseHistory.map((item, index) => normalizeUnitsPatternEntry(item, index)).filter(Boolean).sort(compareDrawDesc)
+        : [];
+      const drawPatterns = Array.isArray(draws)
+        ? draws.map((draw, index) => {
+          const pattern = numbersToUnitsPattern(draw?.numbers);
+          if (!pattern) return null;
+          return normalizeUnitsPatternEntry({ date: draw.date ?? index, pattern }, index);
+        }).filter(Boolean).sort(compareDrawDesc)
+        : [];
+
+      const seenDates = new Set(drawPatterns.map(item => item.date));
+      return [
+        ...drawPatterns,
+        ...normalizedBase.filter(item => !seenDates.has(item.date))
+      ];
+    }
+
+    function onesShapeKey(pattern) {
+      const counts = pattern.reduce((map, digit) => {
+        map.set(digit, (map.get(digit) || 0) + 1);
+        return map;
+      }, new Map());
+      return Array.from(counts.values()).sort((a, b) => b - a).join(',');
+    }
+
+    function buildOnesModel(history) {
+      const normalized = history
+        .map((item, index) => normalizeUnitsPatternEntry(item, index))
+        .filter(Boolean)
+        .sort(compareDrawDesc);
+
+      if (normalized.length < 2) {
+        throw new Error('历史个位数组数据不足，无法计算推荐');
+      }
+
+      const chronological = normalized.slice().reverse();
+      const total = chronological.length;
+      const orderedCounts = new Map();
+      const unorderedCounts = new Map();
+      const uniqueOrderedPatterns = [];
+      const seenOrdered = new Set();
+      const sumCounts = Array(46).fill(0);
+      const shapeCounts = new Map();
+      const omissionAppearances = Array.from({ length: 10 }, () => []);
+      const oeCounts = new Map();
+      const bsCounts = new Map();
+
+      let adjacentMatches = 0;
+      let triplePlusCount = 0;
+      let allOddEvenCount = 0;
+      let twoPairsCount = 0;
+      let fiveConsecutiveCount = 0;
+
+      chronological.forEach((item, index) => {
+        const pattern = item.pattern.slice();
+        const key = pattern.join(',');
+        const unorderedKey = pattern.slice().sort((a, b) => a - b).join(',');
+        orderedCounts.set(key, (orderedCounts.get(key) || 0) + 1);
+        unorderedCounts.set(unorderedKey, (unorderedCounts.get(unorderedKey) || 0) + 1);
+        if (!seenOrdered.has(key)) {
+          seenOrdered.add(key);
+          uniqueOrderedPatterns.push(pattern);
+        }
+
+        const sumValue = pattern.reduce((sum, digit) => sum + digit, 0);
+        sumCounts[sumValue] += 1;
+        adjacentMatches += pattern.slice(0, 4).reduce((count, digit, pos) => count + (digit === pattern[pos + 1] ? 1 : 0), 0);
+
+        const digitCounts = pattern.reduce((map, digit) => {
+          map.set(digit, (map.get(digit) || 0) + 1);
+          return map;
+        }, new Map());
+        const shapeKey = Array.from(digitCounts.values()).sort((a, b) => b - a).join(',');
+        shapeCounts.set(shapeKey, (shapeCounts.get(shapeKey) || 0) + 1);
+
+        pattern.forEach(digit => {
+          omissionAppearances[digit].push(index);
+        });
+
+        const oddCount = pattern.reduce((count, digit) => count + (digit % 2 === 1 ? 1 : 0), 0);
+        const bigCount = pattern.reduce((count, digit) => count + (digit >= 5 ? 1 : 0), 0);
+        oeCounts.set(oddCount, (oeCounts.get(oddCount) || 0) + 1);
+        bsCounts.set(bigCount, (bsCounts.get(bigCount) || 0) + 1);
+
+        if (Array.from(digitCounts.values()).some(value => value >= 3)) triplePlusCount += 1;
+        if (oddCount === 0 || oddCount === 5) allOddEvenCount += 1;
+        if (Array.from(digitCounts.values()).filter(value => value === 2).length >= 2) twoPairsCount += 1;
+
+        const sortedPattern = pattern.slice().sort((a, b) => a - b);
+        if (sortedPattern.slice(1).every((digit, pos) => digit === sortedPattern[pos] + 1)) {
+          fiveConsecutiveCount += 1;
+        }
+      });
+
+      const posProb = Array.from({ length: 5 }, () => Array(10).fill(0));
+      uniqueOrderedPatterns.forEach(pattern => {
+        pattern.forEach((digit, pos) => {
+          posProb[pos][digit] += 1;
+        });
+      });
+      posProb.forEach(probs => {
+        const totalUnique = uniqueOrderedPatterns.length || 1;
+        for (let i = 0; i < probs.length; i += 1) {
+          probs[i] /= totalUnique;
+        }
+      });
+
+      const sumProb = Array.from({ length: 46 }, (_, sumValue) => ((sumCounts[sumValue] || 0) + 1) / (total + 46));
+      const maxSumProb = Math.max(...sumProb);
+      const actualAdjRepeatRate = total ? adjacentMatches / (total * 4) : 0;
+      const adjPenalty = actualAdjRepeatRate > 0 ? actualAdjRepeatRate / 0.1 : 1;
+      const maxUnorderedCount = Math.max(1, ...Array.from(unorderedCounts.values()));
+
+      const shapeProb = new Map();
+      shapeCounts.forEach((count, key) => {
+        shapeProb.set(key, count / total);
+      });
+      const maxShapeProb = Math.max(1e-9, ...Array.from(shapeProb.values()));
+
+      const omissionRatio = new Map();
+      for (let digit = 0; digit < 10; digit += 1) {
+        const appearances = omissionAppearances[digit];
+        const omission = appearances.length ? total - 1 - appearances[appearances.length - 1] : total;
+        let avgGap = total;
+        if (appearances.length > 1) {
+          const gaps = [];
+          for (let i = 0; i < appearances.length - 1; i += 1) {
+            gaps.push(appearances[i + 1] - appearances[i]);
+          }
+          avgGap = gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length;
+        }
+        omissionRatio.set(digit, avgGap > 0 ? omission / avgGap : 0);
+      }
+
+      const discountFactors = {
+        triplePlus: Math.max(0.01, 1 - triplePlusCount / total),
+        allOddEven: Math.max(0.01, 1 - allOddEvenCount / total),
+        twoPairs: Math.max(0.01, 1 - twoPairsCount / total),
+        fiveConsecutive: Math.max(0.01, 1 - fiveConsecutiveCount / total)
+      };
+
+      const oeProb = new Map();
+      oeCounts.forEach((count, oddCount) => {
+        oeProb.set(oddCount, count / total);
+      });
+      const bsProb = new Map();
+      bsCounts.forEach((count, bigCount) => {
+        bsProb.set(bigCount, count / total);
+      });
+      const maxOeProb = Math.max(0.01, ...Array.from(oeProb.values()));
+
+      const topOmissionDigits = Array.from(omissionRatio.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([digit, ratio]) => `${digit}(${ratio.toFixed(2)}x)`)
+        .join(' / ');
+
+      const model = {
+        latest: normalized[0],
+        total,
+        uniqueOrderedCount: orderedCounts.size,
+        uniqueUnorderedCount: unorderedCounts.size,
+        topOmissionDigits,
+        posProb,
+        sumProb,
+        maxSumProb,
+        adjPenalty,
+        orderedCounts,
+        unorderedCounts,
+        maxUnorderedCount,
+        shapeProb,
+        maxShapeProb,
+        omissionRatio,
+        discountFactors,
+        oeProb,
+        bsProb,
+        maxOeProb
+      };
+
+      model.rankedEntries = enumerateOnesScores(model);
+      model.scoreMap = new Map(model.rankedEntries.map(entry => [entry.key, entry.score]));
+      return model;
+    }
+
+    function scoreOnesSequence(pattern, model) {
+      const positiveMinLogs = model.posProb.reduce((sum, probs) => {
+        const positives = probs.filter(value => value > 0);
+        return sum + Math.log(positives.length ? Math.min(...positives) : 1e-9);
+      }, 0);
+      const maxLogPos = model.posProb.reduce((sum, probs) => sum + Math.log(Math.max(...probs)), 0);
+      const logPos = pattern.reduce((sum, digit, pos) => sum + Math.log(Math.max(model.posProb[pos][digit], 1e-9)), 0);
+      const f1 = (logPos - positiveMinLogs) / (maxLogPos - positiveMinLogs + 1e-12);
+
+      const sumValue = pattern.reduce((sum, digit) => sum + digit, 0);
+      const f2 = (model.sumProb[sumValue] || 0) / model.maxSumProb;
+
+      const adjacentRepeats = pattern.slice(0, 4).reduce((count, digit, pos) => count + (digit === pattern[pos + 1] ? 1 : 0), 0);
+      const f3 = Math.pow(model.adjPenalty, adjacentRepeats);
+
+      const unorderedKey = pattern.slice().sort((a, b) => a - b).join(',');
+      const unorderedCount = model.unorderedCounts.get(unorderedKey) || 0;
+      const f4 = Math.log1p(unorderedCount) / Math.log1p(model.maxUnorderedCount);
+
+      const orderedKey = pattern.join(',');
+      const orderedCount = model.orderedCounts.get(orderedKey) || 0;
+      const f5 = orderedCount === 0 ? 0.30 : orderedCount === 1 ? 0.70 : 1.0;
+
+      const shapeKey = onesShapeKey(pattern);
+      const f6 = (model.shapeProb.get(shapeKey) || 1e-9) / model.maxShapeProb;
+
+      const averageOmission = pattern.reduce((sum, digit) => sum + (model.omissionRatio.get(digit) || 0), 0) / 5;
+      const f7 = 1 / (1 + Math.exp(-2 * (averageOmission - 1)));
+
+      const counts = pattern.reduce((map, digit) => {
+        map.set(digit, (map.get(digit) || 0) + 1);
+        return map;
+      }, new Map());
+      let discount = 1;
+      if (Array.from(counts.values()).some(value => value >= 3)) {
+        discount *= model.discountFactors.triplePlus;
+      }
+
+      const oddCount = pattern.reduce((count, digit) => count + (digit % 2 === 1 ? 1 : 0), 0);
+      if (oddCount === 0 || oddCount === 5) {
+        discount *= model.discountFactors.allOddEven;
+      }
+      if (Array.from(counts.values()).filter(value => value === 2).length >= 2) {
+        discount *= model.discountFactors.twoPairs;
+      }
+
+      const sortedPattern = pattern.slice().sort((a, b) => a - b);
+      if (sortedPattern.slice(1).every((digit, pos) => digit === sortedPattern[pos] + 1)) {
+        discount *= model.discountFactors.fiveConsecutive;
+      }
+
+      const bigCount = pattern.reduce((count, digit) => count + (digit >= 5 ? 1 : 0), 0);
+      const oeScore = model.oeProb.get(oddCount) || 0.01;
+      const bsScore = model.bsProb.get(bigCount) || 0.01;
+      const structBonus = Math.sqrt(oeScore * bsScore);
+
+      const baseScore = 0.30 * f1 + 0.15 * f2 + 0.10 * f3 + 0.20 * f4 + 0.10 * f5 + 0.10 * f6 + 0.05 * f7;
+      const totalScore = baseScore * discount * (0.85 + 0.15 * structBonus / model.maxOeProb);
+
+      return {
+        score: totalScore,
+        detail: {
+          sumValue,
+          orderedCount,
+          unorderedCount,
+          oddText: `${oddCount}奇${5 - oddCount}偶`,
+          sizeText: `${bigCount}大${5 - bigCount}小`
+        }
+      };
+    }
+
+    function enumerateOnesScores(model) {
+      const scored = [];
+      for (let a = 0; a < 10; a += 1) {
+        for (let b = 0; b < 10; b += 1) {
+          for (let c = 0; c < 10; c += 1) {
+            for (let d = 0; d < 10; d += 1) {
+              for (let e = 0; e < 10; e += 1) {
+                const pattern = [a, b, c, d, e];
+                const { score } = scoreOnesSequence(pattern, model);
+                scored.push({
+                  key: pattern.join(','),
+                  pattern,
+                  unorderedKey: pattern.slice().sort((x, y) => x - y).join(','),
+                  score
+                });
+              }
+            }
+          }
+        }
+      }
+      scored.sort((left, right) => right.score - left.score);
+      return scored;
+    }
+
+    function buildOnesResultEntry(pattern, model, scoreValue = null) {
+      const result = scoreOnesSequence(pattern, model);
+      return {
+        key: pattern.join(','),
+        pattern,
+        score: scoreValue == null ? result.score : scoreValue,
+        ...result.detail
+      };
+    }
+
+    function expandUnitsPatternToMainNumbers(pattern, seedValue, useAvailablePool = true) {
+      let remainingPool = (useAvailablePool ? currentState.availableMain : MAIN_POOL).slice();
+      const numbers = [];
+
+      for (let index = 0; index < pattern.length; index += 1) {
+        const digit = pattern[index];
+        const candidates = remainingPool.filter(number => number % 10 === digit);
+        const sampled = sampleWithoutReplacement(candidates, 1, normalizeSeed(seedValue) + digit * 97 + index * 17);
+        if (!sampled) {
+          return {
+            complete: false,
+            numbers: [],
+            reason: '当前剩余主号池不足以展开这个个位数组'
+          };
+        }
+        const chosen = sampled[0];
+        numbers.push(chosen);
+        remainingPool = remainingPool.filter(number => number !== chosen);
+      }
+
+      return {
+        complete: true,
+        numbers: numbers.sort((a, b) => a - b),
+        reason: ''
+      };
+    }
+
+    function buildOnesRecommendationRow(item, index) {
+      const settings = onesRecommendationState.settings;
+      const expandResult = settings.expand
+        ? expandUnitsPatternToMainNumbers(item.pattern, normalizeSeed(settings.seed) + index * 131, true)
+        : null;
+      let expandedText = '未展开';
+      if (settings.expand) {
+        expandedText = expandResult.complete ? expandResult.numbers.join(' ') : expandResult.reason;
+      }
+
+      return `
+        <tr>
+          <td>${index}</td>
+          <td class="mono">${formatPattern(item.pattern)}</td>
+          <td class="mono">${item.score.toFixed(4)}</td>
+          <td>${item.sumValue}</td>
+          <td>${item.unorderedCount}</td>
+          <td>${item.orderedCount}</td>
+          <td>${item.oddText}</td>
+          <td>${item.sizeText}</td>
+          <td class="mono">${expandedText}</td>
+        </tr>
+      `;
+    }
+
+    function renderOnesRecommendations() {
+      if (onesRecommendationState.error) {
+        els.onesRecommendationSummary.textContent = onesRecommendationState.error;
+        els.onesRecommendationMeta.innerHTML = '<span class="metric">个位数组推荐暂不可用</span>';
+        els.onesRecommendationTopBody.innerHTML = '<tr><td colspan="9" class="muted">暂无可用推荐</td></tr>';
+        els.onesRecommendationSampleBody.innerHTML = '<tr><td colspan="9" class="muted">暂无可用推荐</td></tr>';
+        els.onesRecommendationUnseenSection.style.display = onesRecommendationState.settings.showUnseen ? 'block' : 'none';
+        els.onesRecommendationUnseenBody.innerHTML = '<tr><td colspan="9" class="muted">暂无可用推荐</td></tr>';
+        return;
+      }
+
+      if (!onesRecommendationState.model) {
+        els.onesRecommendationSummary.textContent = '正在等待历史个位数组数据…';
+        els.onesRecommendationMeta.innerHTML = '<span class="metric">历史个位数组尚未加载</span>';
+        els.onesRecommendationTopBody.innerHTML = '<tr><td colspan="9" class="muted">正在等待历史个位数组数据…</td></tr>';
+        els.onesRecommendationSampleBody.innerHTML = '<tr><td colspan="9" class="muted">正在等待历史个位数组数据…</td></tr>';
+        els.onesRecommendationUnseenSection.style.display = onesRecommendationState.settings.showUnseen ? 'block' : 'none';
+        els.onesRecommendationUnseenBody.innerHTML = '<tr><td colspan="9" class="muted">勾选“显示历史未出现高分组合”后，这里会显示额外参考。</td></tr>';
+        return;
+      }
+
+      const model = onesRecommendationState.model;
+      els.onesRecommendationSummary.textContent = `当前最新主号个位数组是 ${formatPattern(model.latest.pattern)}。这里会综合位置分布、和值、相邻重复、历史频率、重复结构和遗漏情况来做参考排序；只作为手动选号参考，不代表预测。`;
+      els.onesRecommendationMeta.innerHTML = [
+        `当前个位数组：${formatPattern(model.latest.pattern)}`,
+        `历史期数：${model.total}`,
+        `唯一有序组合：${model.uniqueOrderedCount}`,
+        `唯一无序组合：${model.uniqueUnorderedCount}`,
+        `高遗漏尾数：${model.topOmissionDigits || '暂无'}`,
+        `历史源：${onesRecommendationState.source || '未确定'}`,
+        `当前开奖：${currentState.source || '未确定'}`
+      ].map(text => `<span class="metric">${text}</span>`).join('');
+
+      els.onesRecommendationTopBody.innerHTML = onesRecommendationState.topResults.length
+        ? onesRecommendationState.topResults.map((item, index) => buildOnesRecommendationRow(item, index + 1)).join('')
+        : '<tr><td colspan="9" class="muted">暂无可用推荐</td></tr>';
+
+      els.onesRecommendationSampleBody.innerHTML = onesRecommendationState.sampleResults.length
+        ? onesRecommendationState.sampleResults.map((item, index) => buildOnesRecommendationRow(item, index + 1)).join('')
+        : '<tr><td colspan="9" class="muted">暂无随机样本</td></tr>';
+
+      els.onesRecommendationUnseenSection.style.display = onesRecommendationState.settings.showUnseen ? 'block' : 'none';
+      els.onesRecommendationUnseenBody.innerHTML = onesRecommendationState.settings.showUnseen
+        ? (onesRecommendationState.unseenResults.length
+          ? onesRecommendationState.unseenResults.map((item, index) => buildOnesRecommendationRow(item, index + 1)).join('')
+          : '<tr><td colspan="9" class="muted">当前没有额外未出现高分组合。</td></tr>')
+        : '<tr><td colspan="9" class="muted">勾选“显示历史未出现高分组合”后，这里会显示额外参考。</td></tr>';
+    }
+
+    function recomputeOnesRecommendations() {
+      if (!onesRecommendationState.history.length) {
+        renderOnesRecommendations();
+        return;
+      }
+
+      const top = Math.max(1, Math.min(20, Number(els.onesRecommendTopInput.value) || DEFAULT_ONES_RECOMMEND_SETTINGS.top));
+      const samples = Math.max(1, Math.min(20, Number(els.onesRecommendSamplesInput.value) || DEFAULT_ONES_RECOMMEND_SETTINGS.samples));
+      const unseen = Math.max(1, Math.min(20, Number(els.onesRecommendUnseenInput.value) || DEFAULT_ONES_RECOMMEND_SETTINGS.unseen));
+      const seed = els.onesRecommendSeedInput.value.trim();
+      const expand = els.onesRecommendExpandInput.checked;
+      const showUnseen = els.onesRecommendShowUnseenInput.checked;
+
+      onesRecommendationState.settings = { top, samples, unseen, seed, expand, showUnseen };
+
+      try {
+        if (!onesRecommendationState.model) {
+          onesRecommendationState.model = buildOnesModel(onesRecommendationState.history);
+        }
+        const model = onesRecommendationState.model;
+        const topResults = model.rankedEntries.slice(0, top).map(entry => buildOnesResultEntry(entry.pattern, model, entry.score));
+        const sampledKeys = weightedSampleUnique(model.scoreMap, samples, seed || model.latest.date);
+        const sampleResults = sampledKeys.map(key => buildOnesResultEntry(key.split(',').map(Number), model, model.scoreMap.get(key) || 0));
+
+        let unseenResults = [];
+        if (showUnseen) {
+          for (const entry of model.rankedEntries) {
+            if ((model.orderedCounts.get(entry.key) || 0) === 0 && (model.unorderedCounts.get(entry.unorderedKey) || 0) === 0) {
+              unseenResults.push(buildOnesResultEntry(entry.pattern, model, entry.score));
+            }
+            if (unseenResults.length >= unseen) break;
+          }
+        }
+
+        onesRecommendationState.topResults = topResults;
+        onesRecommendationState.sampleResults = sampleResults;
+        onesRecommendationState.unseenResults = unseenResults;
+        onesRecommendationState.error = '';
+      } catch (err) {
+        onesRecommendationState.model = null;
+        onesRecommendationState.topResults = [];
+        onesRecommendationState.sampleResults = [];
+        onesRecommendationState.unseenResults = [];
+        onesRecommendationState.error = '个位数组推荐计算失败：' + describeError(err);
+      }
+
+      renderOnesRecommendations();
+    }
+
+    function applyOnesPatternHistory(items, sourceLabel = '未知来源', generatedAt = null) {
+      const normalized = items
+        .map((item, index) => normalizeUnitsPatternEntry(item, index))
+        .filter(Boolean)
+        .sort(compareDrawDesc);
+
+      if (normalized.length < 2) {
+        throw new Error('历史个位数组数据不足，无法启用推荐功能');
+      }
+
+      onesRecommendationState = {
+        ...onesRecommendationState,
+        baseHistory: normalized,
+        history: mergeUnitsHistoryWithDraws(normalized, currentState.draws),
+        source: sourceLabel,
+        generatedAt,
+        historyDrawSignature: currentState.drawSignature,
+        model: null,
+        error: ''
+      };
+      recomputeOnesRecommendations();
+    }
+
+    function applyFallbackOnesPatternHistory() {
+      const fallbackItems = FALLBACK_DRAWS.map(draw => ({
+        date: draw.date,
+        pattern: numbersToUnitsPattern(draw.numbers)
+      })).filter(item => Array.isArray(item.pattern));
+
+      if (fallbackItems.length < 2) {
+        onesRecommendationState = {
+          ...onesRecommendationState,
+          baseHistory: [],
+          history: [],
+          model: null,
+          topResults: [],
+          sampleResults: [],
+          unseenResults: [],
+          error: '历史个位数组样例不可用'
+        };
+        renderOnesRecommendations();
+        return;
+      }
+
+      applyOnesPatternHistory(fallbackItems, '内置样例', null);
+    }
+
+    function mergeHistoricalDrawsWithCurrent(baseHistory, draws) {
+      const normalizedBase = Array.isArray(baseHistory)
+        ? baseHistory.map((item, index) => normalizeOneDraw(item, index)).filter(Boolean).sort(compareDrawDesc)
+        : [];
+      const currentDraws = Array.isArray(draws)
+        ? draws.map((item, index) => normalizeOneDraw(item, index)).filter(Boolean).sort(compareDrawDesc)
+        : [];
+
+      const seenDates = new Set(currentDraws.map(item => item.date));
+      return [
+        ...currentDraws,
+        ...normalizedBase.filter(item => !seenDates.has(item.date))
+      ];
+    }
+
+    function averageMainGap(numbers) {
+      const gaps = [];
+      for (let i = 0; i < numbers.length - 1; i += 1) {
+        gaps.push(numbers[i + 1] - numbers[i]);
+      }
+      const average = gaps.reduce((sum, gap) => sum + gap, 0) / Math.max(gaps.length, 1);
+      return Math.round(average * 10) / 10;
+    }
+
+    function buildMainStructureModel(drawHistory) {
+      if (!Array.isArray(drawHistory) || drawHistory.length < 3) {
+        throw new Error('历史开奖数据不足，无法计算联合推荐');
+      }
+
+      const normalized = drawHistory
+        .map((item, index) => normalizeOneDraw(item, index))
+        .filter(Boolean)
+        .sort(compareDrawDesc);
+
+      const mains = normalized.slice().reverse().map(draw => draw.numbers.slice().sort((a, b) => a - b));
+      return {
+        latestMain: normalized[0].numbers.slice().sort((a, b) => a - b),
+        prevMain: normalized[1].numbers.slice().sort((a, b) => a - b),
+        sumCounter: buildCountMap(mains.map(numbers => numbers.reduce((sum, value) => sum + value, 0))),
+        oddCounter: buildCountMap(mains.map(numbers => numbers.filter(value => value % 2 === 1).length)),
+        lowCounter: buildCountMap(mains.map(numbers => numbers.filter(value => value <= 25).length)),
+        gapCounter: buildCountMap(mains.map(numbers => averageMainGap(numbers)))
+      };
+    }
+
+    function scoreMainStructure(numbers, model) {
+      const sumValue = numbers.reduce((sum, value) => sum + value, 0);
+      const oddCount = numbers.filter(value => value % 2 === 1).length;
+      const lowCount = numbers.filter(value => value <= 25).length;
+      const avgGap = averageMainGap(numbers);
+      const consecutivePairs = numbers.slice(0, 4).reduce((count, value, index) => count + (numbers[index + 1] === value + 1 ? 1 : 0), 0);
+      const overlapLatest = numbers.filter(value => model.latestMain.includes(value)).length;
+      const overlapPrev = numbers.filter(value => model.prevMain.includes(value)).length;
+
+      const sumScore = smoothedCounterProbability(sumValue, model.sumCounter);
+      let oddScore = smoothedCounterProbability(oddCount, model.oddCounter);
+      let lowScore = smoothedCounterProbability(lowCount, model.lowCounter);
+      const gapScore = smoothedCounterProbability(avgGap, model.gapCounter);
+
+      if (oddCount === 0 || oddCount === 5) {
+        oddScore *= 0.85;
+      }
+      if (lowCount === 0 || lowCount === 5) {
+        lowScore *= 0.85;
+      }
+
+      const consecutivePenalty = Math.pow(0.90, consecutivePairs);
+      const recentPenalty = Math.pow(0.82, overlapLatest) * Math.pow(0.90, overlapPrev);
+      const score = (
+        0.35 * sumScore +
+        0.20 * oddScore +
+        0.20 * lowScore +
+        0.15 * gapScore +
+        0.10 * 1
+      ) * consecutivePenalty * recentPenalty;
+
+      return {
+        score,
+        detail: {
+          sumValue,
+          oddCount,
+          lowCount,
+          avgGap,
+          consecutivePairs,
+          overlapLatest,
+          overlapPrev
+        }
+      };
+    }
+
+    function starPairKey(pair) {
+      return pair.join(',');
+    }
+
+    function parseStarPairKey(key) {
+      return String(key).split(',').map(Number).filter(value => Number.isInteger(value));
+    }
+
+    function buildStarModel(drawHistory, strength = DEFAULT_JOINT_RECOMMEND_SETTINGS.starStrength) {
+      const normalized = drawHistory
+        .map((item, index) => normalizeOneDraw(item, index))
+        .filter(Boolean)
+        .sort(compareDrawDesc);
+
+      if (normalized.length < 3) {
+        throw new Error('历史星号数据不足，无法计算联合推荐');
+      }
+
+      const chronologicalPairs = normalized.slice().reverse().map(draw => draw.stars.slice().sort((a, b) => a - b));
+      const pairCounter = buildCountMap(chronologicalPairs.map(pair => starPairKey(pair)));
+      const pairProbs = normalizeCountMap(pairCounter);
+      const transitions = new Map();
+      const transitionTotals = new Map();
+
+      for (let index = 0; index < chronologicalPairs.length - 1; index += 1) {
+        const currentKey = starPairKey(chronologicalPairs[index]);
+        const nextKey = starPairKey(chronologicalPairs[index + 1]);
+        if (!transitions.has(currentKey)) {
+          transitions.set(currentKey, new Map());
+        }
+        const nextMap = transitions.get(currentKey);
+        nextMap.set(nextKey, (nextMap.get(nextKey) || 0) + 1);
+        transitionTotals.set(currentKey, (transitionTotals.get(currentKey) || 0) + 1);
+      }
+
+      const currentPair = normalized[0].stars.slice().sort((a, b) => a - b);
+      const currentKey = starPairKey(currentPair);
+      const localN = transitionTotals.get(currentKey) || 0;
+      const alpha = localN > 0 ? strength / (strength + localN) : 1;
+
+      const individualCounter = new Map();
+      for (let digit = 1; digit <= 12; digit += 1) {
+        individualCounter.set(digit, 0);
+      }
+      chronologicalPairs.forEach(pair => {
+        pair.forEach(digit => individualCounter.set(digit, (individualCounter.get(digit) || 0) + 1));
+      });
+
+      const sumCounter = buildCountMap(chronologicalPairs.map(pair => pair[0] + pair[1]));
+      const gapCounter = buildCountMap(chronologicalPairs.map(pair => pair[1] - pair[0]));
+      const omissionRatio = new Map();
+      for (let digit = 1; digit <= 12; digit += 1) {
+        const indexes = [];
+        chronologicalPairs.forEach((pair, index) => {
+          if (pair.includes(digit)) indexes.push(index);
+        });
+        const omission = indexes.length ? chronologicalPairs.length - 1 - indexes[indexes.length - 1] : chronologicalPairs.length;
+        let avgGap = chronologicalPairs.length;
+        if (indexes.length > 1) {
+          const gaps = [];
+          for (let i = 0; i < indexes.length - 1; i += 1) {
+            gaps.push(indexes[i + 1] - indexes[i]);
+          }
+          avgGap = gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length;
+        }
+        omissionRatio.set(digit, omission / Math.max(avgGap, 1e-9));
+      }
+
+      const localCounts = transitions.get(currentKey) || new Map();
+      const maxIndividual = Math.max(1, ...Array.from(individualCounter.values()));
+      const maxSumProbability = Math.max(...Array.from({ length: 21 }, (_, index) => smoothedCounterProbability(index + 3, sumCounter)));
+      const maxGapProbability = Math.max(...Array.from({ length: 11 }, (_, index) => smoothedCounterProbability(index + 1, gapCounter)));
+
+      const scores = new Map();
+      for (let left = 1; left <= 12; left += 1) {
+        for (let right = left + 1; right <= 12; right += 1) {
+          const pair = [left, right];
+          const key = starPairKey(pair);
+          const globalProbability = pairProbs.get(key) || 0;
+          const localProbability = localN > 0 ? (localCounts.get(key) || 0) / localN : 0;
+          const pairBlend = alpha * globalProbability + (1 - alpha) * localProbability;
+          const individualScore = ((individualCounter.get(left) || 0) + (individualCounter.get(right) || 0)) / (2 * maxIndividual);
+          const omitAverage = ((omissionRatio.get(left) || 0) + (omissionRatio.get(right) || 0)) / 2;
+          const omissionScore = 1 / (1 + Math.exp(-2 * (omitAverage - 1)));
+          const sumScore = smoothedCounterProbability(left + right, sumCounter) / Math.max(maxSumProbability, 1e-12);
+          const gapScore = smoothedCounterProbability(right - left, gapCounter) / Math.max(maxGapProbability, 1e-12);
+          const score = (
+            0.45 * pairBlend +
+            0.20 * individualScore +
+            0.15 * omissionScore +
+            0.10 * sumScore +
+            0.10 * gapScore
+          ) + 1e-12;
+          scores.set(key, score);
+        }
+      }
+
+      const rankedEntries = mapToSortedEntries(scores).map(([key, score]) => ({
+        key,
+        pair: parseStarPairKey(key),
+        score
+      }));
+
+      return {
+        currentPair,
+        localN,
+        alpha,
+        scores,
+        rankedEntries
+      };
+    }
+
+    function buildJointOnesHistory(drawHistory) {
+      return drawHistory
+        .map((draw, index) => normalizeUnitsPatternEntry({
+          date: draw.date ?? index,
+          pattern: numbersToUnitsPattern(draw.numbers)
+        }, index))
+        .filter(Boolean)
+        .sort(compareDrawDesc);
+    }
+
+    function resolveJointOnesModel(onesHistory) {
+      const reusableHistory = Array.isArray(onesRecommendationState.history) ? onesRecommendationState.history : [];
+      const canReuse = Boolean(
+        onesRecommendationState.model &&
+        reusableHistory.length === onesHistory.length &&
+        reusableHistory[0]?.date === onesHistory[0]?.date &&
+        reusableHistory[reusableHistory.length - 1]?.date === onesHistory[onesHistory.length - 1]?.date &&
+        onesRecommendationState.historyDrawSignature === currentState.drawSignature
+      );
+      return canReuse ? onesRecommendationState.model : buildOnesModel(onesHistory);
+    }
+
+    function buildJointRecommendationModel(drawHistory, tensStrength, starStrength) {
+      if (!Array.isArray(drawHistory) || drawHistory.length < 3) {
+        throw new Error('历史开奖数据不足，无法计算联合推荐');
+      }
+
+      const normalized = drawHistory
+        .map((item, index) => normalizeOneDraw(item, index))
+        .filter(Boolean)
+        .sort(compareDrawDesc);
+
+      const tensHistory = normalized
+        .map((draw, index) => normalizePatternEntry({
+          date: draw.date ?? index,
+          pattern: numbersToTensPattern(draw.numbers)
+        }, index))
+        .filter(Boolean)
+        .sort(compareDrawDesc);
+      const onesHistory = buildJointOnesHistory(normalized);
+
+      return {
+        historyCount: normalized.length,
+        latestMain: normalized[0].numbers.slice().sort((a, b) => a - b),
+        latestStar: normalized[0].stars.slice().sort((a, b) => a - b),
+        prevMain: normalized[1].numbers.slice().sort((a, b) => a - b),
+        tensSummary: buildPatternScoreSummary(tensHistory, tensStrength),
+        onesModel: resolveJointOnesModel(onesHistory),
+        structureModel: buildMainStructureModel(normalized),
+        starModel: buildStarModel(normalized, starStrength)
+      };
+    }
+
+    function buildJointRecommendationResults(model, settings) {
+      const tensCandidates = mapToSortedEntries(model.tensSummary.scores)
+        .slice(0, settings.tensTop)
+        .map(([key, score]) => ({ key, score, pattern: key.split(',').map(Number) }));
+      const unitCandidates = model.onesModel.rankedEntries.slice(0, settings.unitsTop);
+      const mainResults = new Map();
+
+      for (const tensCandidate of tensCandidates) {
+        for (const unitCandidate of unitCandidates) {
+          const numbers = [];
+          let isValid = true;
+
+          for (let index = 0; index < 5; index += 1) {
+            const number = legacyDecadeAndUnitToNumber(tensCandidate.pattern[index], unitCandidate.pattern[index]);
+            if (!Number.isInteger(number)) {
+              isValid = false;
+              break;
+            }
+            numbers.push(number);
+          }
+
+          if (!isValid) continue;
+          const sortedNumbers = numbers.slice().sort((a, b) => a - b);
+          if (sortedNumbers.some((value, index) => value !== numbers[index])) continue;
+          if (new Set(sortedNumbers).size !== 5) continue;
+          if (settings.useAvailablePool && !sortedNumbers.every(number => currentState.availableMain.includes(number))) continue;
+
+          const structure = scoreMainStructure(sortedNumbers, model.structureModel);
+          const finalScore = (
+            Math.pow(Math.max(tensCandidate.score, 1e-12), 0.30) *
+            Math.pow(Math.max(unitCandidate.score, 1e-12), 0.45) *
+            Math.pow(Math.max(structure.score, 1e-12), 0.25)
+          );
+          const key = sortedNumbers.join(',');
+
+          if (!mainResults.has(key) || finalScore > mainResults.get(key).mainScore) {
+            mainResults.set(key, {
+              main: sortedNumbers,
+              mainScore: finalScore,
+              tensScore: tensCandidate.score,
+              unitsScore: unitCandidate.score,
+              structScore: structure.score,
+              tensPattern: tensCandidate.pattern,
+              unitsPattern: unitCandidate.pattern,
+              structureDetail: structure.detail
+            });
+          }
+        }
+      }
+
+      const filteredMainResults = Array.from(mainResults.values()).sort((left, right) => right.mainScore - left.mainScore);
+      if (!filteredMainResults.length) {
+        throw new Error(settings.useAvailablePool
+          ? '当前剩余号码池下没有生成任何合法联合候选；可以提高候选数，或取消“仅用当前剩余号码池”'
+          : '没有生成任何合法联合候选；可以适当提高候选数');
+      }
+
+      const starCandidates = model.starModel.rankedEntries
+        .filter(item => !settings.useAvailablePool || item.pair.every(star => currentState.availableStars.includes(star)))
+        .slice(0, settings.starTop);
+      if (!starCandidates.length) {
+        throw new Error('当前剩余星号池不足以生成联合推荐');
+      }
+
+      const finalResults = filteredMainResults
+        .slice(0, Math.max(settings.top * 3, 30))
+        .map(item => {
+          let bestPair = starCandidates[0].pair;
+          let bestStarScore = starCandidates[0].score;
+          let bestTotalScore = -1;
+
+          starCandidates.forEach(candidate => {
+            const totalScore = (
+              Math.pow(Math.max(item.mainScore, 1e-12), 0.82) *
+              Math.pow(Math.max(candidate.score, 1e-12), 0.18)
+            );
+            if (totalScore > bestTotalScore) {
+              bestTotalScore = totalScore;
+              bestPair = candidate.pair;
+              bestStarScore = candidate.score;
+            }
+          });
+
+          return {
+            main: item.main,
+            stars: bestPair,
+            finalScore: bestTotalScore,
+            tensScore: item.tensScore,
+            unitsScore: item.unitsScore,
+            structScore: item.structScore,
+            starScore: bestStarScore,
+            tensPattern: item.tensPattern,
+            unitsPattern: item.unitsPattern,
+            structureDetail: item.structureDetail
+          };
+        })
+        .sort((left, right) => right.finalScore - left.finalScore);
+
+      return finalResults.slice(0, settings.top);
+    }
+
+    function buildJointRecommendationRow(item, index) {
+      const detail = item.structureDetail;
+      const summaryText = `和值${detail.sumValue} / ${detail.oddCount}奇${5 - detail.oddCount}偶 / 低区${detail.lowCount} / 间距${detail.avgGap.toFixed(1)} / 连号${detail.consecutivePairs} / 重最新${detail.overlapLatest} / 重上期${detail.overlapPrev}`;
+      return `
+        <tr>
+          <td>${index}</td>
+          <td class="mono">${item.main.join(' ')}</td>
+          <td class="mono">${item.stars.join(' ')}</td>
+          <td class="mono">${item.finalScore.toFixed(8)}</td>
+          <td class="mono">${item.tensScore.toFixed(8)}</td>
+          <td class="mono">${item.unitsScore.toFixed(8)}</td>
+          <td class="mono">${item.structScore.toFixed(8)}</td>
+          <td class="mono">${item.starScore.toFixed(8)}</td>
+          <td class="mono">${formatPattern(item.tensPattern)}</td>
+          <td class="mono">${formatPattern(item.unitsPattern)}</td>
+          <td>${summaryText}</td>
+        </tr>
+      `;
+    }
+
+    function renderJointRecommendations() {
+      if (jointRecommendationState.error) {
+        els.jointRecommendationSummary.textContent = jointRecommendationState.error;
+        els.jointRecommendationMeta.innerHTML = '<span class="metric">联合推荐暂不可用</span>';
+        els.jointRecommendationBody.innerHTML = '<tr><td colspan="11" class="muted">暂无可用推荐</td></tr>';
+        return;
+      }
+
+      if (!jointRecommendationState.model) {
+        els.jointRecommendationSummary.textContent = '正在等待历史开奖数据…';
+        els.jointRecommendationMeta.innerHTML = '<span class="metric">历史开奖尚未加载</span>';
+        els.jointRecommendationBody.innerHTML = '<tr><td colspan="11" class="muted">正在等待历史开奖数据…</td></tr>';
+        return;
+      }
+
+      const model = jointRecommendationState.model;
+      els.jointRecommendationSummary.textContent = `当前最新主号是 ${model.latestMain.join(' ')}，星号是 ${model.latestStar.join(' ')}。这里会先筛出合法主号候选，再结合真实号码结构和星号模型给出最终推荐票；只作为手动选号参考，不代表预测。`;
+      els.jointRecommendationMeta.innerHTML = [
+        `历史期数：${model.historyCount}`,
+        `最新主号：${model.latestMain.join(' ')}`,
+        `最新星号：${model.latestStar.join(' ')}`,
+        `上期主号：${model.prevMain.join(' ')}`,
+        `十位转移样本数：${model.tensSummary.localN}`,
+        `十位权重 α：${model.tensSummary.alpha.toFixed(4)}`,
+        `星号转移样本数：${model.starModel.localN}`,
+        `星号权重 α：${model.starModel.alpha.toFixed(4)}`,
+        `使用范围：${jointRecommendationState.settings.useAvailablePool ? '当前剩余号码池' : '全部号码池'}`,
+        `历史源：${jointRecommendationState.source || '未确定'}`,
+        `当前开奖：${currentState.source || '未确定'}`
+      ].map(text => `<span class="metric">${text}</span>`).join('');
+
+      els.jointRecommendationBody.innerHTML = jointRecommendationState.results.length
+        ? jointRecommendationState.results.map((item, index) => buildJointRecommendationRow(item, index + 1)).join('')
+        : '<tr><td colspan="11" class="muted">暂无可用推荐</td></tr>';
+    }
+
+    function recomputeJointRecommendations() {
+      if (!jointRecommendationState.history.length) {
+        renderJointRecommendations();
+        return;
+      }
+
+      const settings = {
+        top: Math.max(1, Math.min(20, Number(els.jointRecommendTopInput.value) || DEFAULT_JOINT_RECOMMEND_SETTINGS.top)),
+        tensTop: Math.max(5, Math.min(50, Number(els.jointRecommendTensTopInput.value) || DEFAULT_JOINT_RECOMMEND_SETTINGS.tensTop)),
+        unitsTop: Math.max(20, Math.min(500, Number(els.jointRecommendUnitsTopInput.value) || DEFAULT_JOINT_RECOMMEND_SETTINGS.unitsTop)),
+        starTop: Math.max(2, Math.min(20, Number(els.jointRecommendStarTopInput.value) || DEFAULT_JOINT_RECOMMEND_SETTINGS.starTop)),
+        tensStrength: Math.max(1, Math.min(50, Number(els.jointRecommendTensStrengthInput.value) || DEFAULT_JOINT_RECOMMEND_SETTINGS.tensStrength)),
+        starStrength: Math.max(1, Math.min(50, Number(els.jointRecommendStarStrengthInput.value) || DEFAULT_JOINT_RECOMMEND_SETTINGS.starStrength)),
+        useAvailablePool: els.jointRecommendUseAvailableInput.checked
+      };
+      jointRecommendationState.settings = settings;
+
+      const modelSignature = [
+        jointRecommendationState.historyDrawSignature,
+        jointRecommendationState.history.length,
+        settings.tensStrength,
+        settings.starStrength
+      ].join('|');
+
+      try {
+        if (!jointRecommendationState.model || jointRecommendationState.model.signature !== modelSignature) {
+          jointRecommendationState.model = {
+            ...buildJointRecommendationModel(
+              jointRecommendationState.history,
+              settings.tensStrength,
+              settings.starStrength
+            ),
+            signature: modelSignature
+          };
+        }
+        jointRecommendationState.results = buildJointRecommendationResults(jointRecommendationState.model, settings);
+        jointRecommendationState.error = '';
+      } catch (err) {
+        jointRecommendationState.model = null;
+        jointRecommendationState.results = [];
+        jointRecommendationState.error = '联合推荐计算失败：' + describeError(err);
+      }
+
+      renderJointRecommendations();
+    }
+
+    function applyHistoricalDrawHistory(items, sourceLabel = '未知来源', generatedAt = null) {
+      const normalized = items
+        .map((item, index) => normalizeOneDraw(item, index))
+        .filter(Boolean)
+        .sort(compareDrawDesc);
+
+      if (normalized.length < 3) {
+        throw new Error('历史开奖数据不足，无法启用联合推荐');
+      }
+
+      jointRecommendationState = {
+        ...jointRecommendationState,
+        baseHistory: normalized,
+        history: mergeHistoricalDrawsWithCurrent(normalized, currentState.draws),
+        source: sourceLabel,
+        generatedAt,
+        historyDrawSignature: currentState.drawSignature,
+        model: null,
+        results: [],
+        error: ''
+      };
+      recomputeJointRecommendations();
+    }
+
+    function applyFallbackHistoricalDrawHistory() {
+      if (FALLBACK_DRAWS.length < 3) {
+        jointRecommendationState = {
+          ...jointRecommendationState,
+          baseHistory: [],
+          history: [],
+          model: null,
+          results: [],
+          error: '历史开奖样例不可用'
+        };
+        renderJointRecommendations();
+        return;
+      }
+
+      applyHistoricalDrawHistory(FALLBACK_DRAWS, '内置样例', null);
+    }
+
     function clampExclusionDrawCount(count, drawCount) {
       const preferred = EXCLUSION_OPTIONS.includes(Number(count)) ? Number(count) : DEFAULT_EXCLUSION_DRAW_COUNT;
       const maxAllowed = Math.min(Math.max(drawCount, 1), MAX_RECENT_DRAWS);
@@ -1383,6 +2695,8 @@
         setUpdated(currentState.generatedAt);
       }
       renderRecommendations();
+      renderOnesRecommendations();
+      renderJointRecommendations();
     }
 
     function recomputeFromCurrentDraws(sourceLabel = currentState.source, updateTimestamp = false) {
@@ -1427,6 +2741,26 @@
           history: mergePatternHistoryWithDraws(recommendationState.baseHistory, currentState.draws)
         };
         recomputeRecommendations();
+      }
+      if (onesRecommendationState.baseHistory.length && currentState.drawSignature !== onesRecommendationState.historyDrawSignature) {
+        onesRecommendationState = {
+          ...onesRecommendationState,
+          history: mergeUnitsHistoryWithDraws(onesRecommendationState.baseHistory, currentState.draws),
+          historyDrawSignature: currentState.drawSignature,
+          model: null
+        };
+        recomputeOnesRecommendations();
+      }
+      if (jointRecommendationState.baseHistory.length) {
+        jointRecommendationState = {
+          ...jointRecommendationState,
+          history: mergeHistoricalDrawsWithCurrent(jointRecommendationState.baseHistory, currentState.draws),
+          historyDrawSignature: currentState.drawSignature,
+          model: currentState.drawSignature === jointRecommendationState.historyDrawSignature
+            ? jointRecommendationState.model
+            : null
+        };
+        recomputeJointRecommendations();
       }
       renderAll(updateTimestamp);
       return { selectionTrimmed };
@@ -1545,7 +2879,8 @@
         draws: normalized,
         source: sourceLabel,
         generatedAt,
-        exclusionDrawCount: clampExclusionDrawCount(preferredCount, normalized.length)
+        exclusionDrawCount: clampExclusionDrawCount(preferredCount, normalized.length),
+        drawSignature: normalized.map(draw => `${draw.date}:${draw.numbers.join('-')}:${draw.stars.join('-')}`).join('|')
       };
 
       recomputeFromCurrentDraws(sourceLabel, true);
@@ -1615,6 +2950,25 @@
       throw lastError || new Error('所有数据来源都不可用');
     }
 
+    async function tryHistoryDrawSources() {
+      let lastError = null;
+      for (const candidate of HISTORY_DRAW_CANDIDATES) {
+        try {
+          const { data, sourceLabel, generatedAt } = await fetchJsonWithTimeout(candidate, 15000);
+          const drawArray = extractDrawArray(data);
+          if (drawArray.length < 3) {
+            throw new Error('历史开奖文件里的数据不足以生成联合推荐');
+          }
+          applyHistoricalDrawHistory(drawArray, sourceLabel, generatedAt);
+          return sourceLabel;
+        } catch (err) {
+          lastError = err;
+          console.warn('历史开奖文件读取失败:', candidate.url, err);
+        }
+      }
+      throw lastError || new Error('历史开奖数据不可用');
+    }
+
     async function tryTensPatternSources() {
       let lastError = null;
       for (const candidate of TENS_PATTERN_CANDIDATES) {
@@ -1632,6 +2986,25 @@
         }
       }
       throw lastError || new Error('十位数组历史数据不可用');
+    }
+
+    async function tryOnesPatternSources() {
+      let lastError = null;
+      for (const candidate of ONES_PATTERN_CANDIDATES) {
+        try {
+          const { data, sourceLabel, generatedAt } = await fetchJsonWithTimeout(candidate, 15000);
+          const items = extractPatternHistoryArray(data);
+          if (!items.length) {
+            throw new Error('个位数组历史文件里的数据结构无法识别');
+          }
+          applyOnesPatternHistory(items, sourceLabel, generatedAt);
+          return sourceLabel;
+        } catch (err) {
+          lastError = err;
+          console.warn('个位数组历史文件读取失败:', candidate.url, err);
+        }
+      }
+      throw lastError || new Error('个位数组历史数据不可用');
     }
 
     function applyManualInput() {
@@ -1690,6 +3063,24 @@
       }
     }
 
+    async function fetchHistoryDrawHistory() {
+      try {
+        await tryHistoryDrawSources();
+      } catch (err) {
+        console.error(err);
+        applyFallbackHistoricalDrawHistory();
+      }
+    }
+
+    async function fetchOnesPatternHistory() {
+      try {
+        await tryOnesPatternSources();
+      } catch (err) {
+        console.error(err);
+        applyFallbackOnesPatternHistory();
+      }
+    }
+
     function assert(condition, message) {
       if (!condition) throw new Error(message);
     }
@@ -1715,6 +3106,26 @@
           scores: new Map(recommendationState.summary.scores || []),
           globalCounts: new Map(recommendationState.summary.globalCounts || [])
         };
+      }
+      onesRecommendationState = savedState.onesRecommendationState;
+      onesRecommendationState.baseHistory = Array.isArray(onesRecommendationState?.baseHistory)
+        ? onesRecommendationState.baseHistory
+        : Array.isArray(onesRecommendationState?.history)
+          ? onesRecommendationState.history
+          : [];
+      onesRecommendationState.model = null;
+      if (onesRecommendationState.history.length) {
+        recomputeOnesRecommendations();
+      }
+      jointRecommendationState = savedState.jointRecommendationState || { ...jointRecommendationState };
+      jointRecommendationState.baseHistory = Array.isArray(jointRecommendationState?.baseHistory)
+        ? jointRecommendationState.baseHistory
+        : Array.isArray(jointRecommendationState?.history)
+          ? jointRecommendationState.history
+          : [];
+      jointRecommendationState.model = null;
+      if (jointRecommendationState.history.length) {
+        recomputeJointRecommendations();
       }
       renderAll(false);
       els.statusText.textContent = savedState.statusText;
@@ -1748,6 +3159,28 @@
           topResults: recommendationState.topResults,
           sampleResults: recommendationState.sampleResults,
           error: recommendationState.error
+        })),
+        onesRecommendationState: JSON.parse(JSON.stringify({
+          baseHistory: onesRecommendationState.baseHistory,
+          history: onesRecommendationState.history,
+          source: onesRecommendationState.source,
+          generatedAt: onesRecommendationState.generatedAt,
+          settings: onesRecommendationState.settings,
+          historyDrawSignature: onesRecommendationState.historyDrawSignature,
+          topResults: onesRecommendationState.topResults,
+          sampleResults: onesRecommendationState.sampleResults,
+          unseenResults: onesRecommendationState.unseenResults,
+          error: onesRecommendationState.error
+        })),
+        jointRecommendationState: JSON.parse(JSON.stringify({
+          baseHistory: jointRecommendationState.baseHistory,
+          history: jointRecommendationState.history,
+          source: jointRecommendationState.source,
+          generatedAt: jointRecommendationState.generatedAt,
+          historyDrawSignature: jointRecommendationState.historyDrawSignature,
+          settings: jointRecommendationState.settings,
+          results: jointRecommendationState.results,
+          error: jointRecommendationState.error
         })),
         statusText: els.statusText.textContent,
         statusClassName: els.statusText.className,
@@ -1789,6 +3222,18 @@
         assert(pattern.join(',') === '0,1,2,3,5', '十位数组转换不正确');
       });
 
+      test('numbersToUnitsPattern 能把主号转换成个位数组', () => {
+        const pattern = numbersToUnitsPattern([4, 15, 28, 37, 50]);
+        assert(Array.isArray(pattern), '应返回数组');
+        assert(pattern.join(',') === '4,5,8,7,0', '个位数组转换不正确');
+      });
+
+      test('legacyDecadeAndUnitToNumber 能按当前十位规则还原主号码', () => {
+        assert(legacyDecadeAndUnitToNumber(0, 0) === 10, '0段 + 0尾应还原为 10');
+        assert(legacyDecadeAndUnitToNumber(2, 7) === 27, '2段 + 7尾应还原为 27');
+        assert(legacyDecadeAndUnitToNumber(5, 0) === 50, '5段 + 0尾应还原为 50');
+      });
+
       test('buildPatternScoreSummary 使用最新一期作为当前状态', () => {
         const history = [
           normalizePatternEntry({ date: '2026-03-31', pattern: [0, 0, 1, 3, 3] }),
@@ -1815,6 +3260,46 @@
         assert(merged[0].date === '2026-04-04', '最新一期应来自当前开奖');
         assert(merged[0].key === '0,1,2,3,4', '当前开奖十位数组不正确');
         assert(merged[1].date === '2026-04-03', '同日期历史记录应被当前开奖覆盖');
+      });
+
+      test('mergeUnitsHistoryWithDraws 会优先使用当前开奖个位数组', () => {
+        const merged = mergeUnitsHistoryWithDraws(
+          [
+            { date: '2026-04-03', pattern: [8, 7, 9, 6, 9] },
+            { date: '2026-04-01', pattern: [1, 4, 5, 8, 0] }
+          ],
+          [
+            { date: '2026-04-04', numbers: [1, 12, 23, 34, 45], stars: [1, 2] },
+            { date: '2026-04-03', numbers: [2, 14, 24, 38, 41], stars: [3, 4] }
+          ]
+        );
+        assert(merged[0].date === '2026-04-04', '最新一期应来自当前开奖');
+        assert(merged[0].key === '1,2,3,4,5', '当前开奖个位数组不正确');
+        assert(merged[1].date === '2026-04-03', '同日期历史记录应被当前开奖覆盖');
+      });
+
+      test('mergeHistoricalDrawsWithCurrent 会优先使用当前开奖数据', () => {
+        const merged = mergeHistoricalDrawsWithCurrent(
+          [
+            { date: '2026-04-03', numbers: [8, 27, 29, 46, 49], stars: [2, 10] },
+            { date: '2026-04-01', numbers: [1, 12, 23, 34, 45], stars: [1, 9] }
+          ],
+          [
+            { date: '2026-04-04', numbers: [2, 11, 24, 35, 47], stars: [4, 8] },
+            { date: '2026-04-03', numbers: [3, 14, 25, 36, 48], stars: [5, 7] }
+          ]
+        );
+        assert(merged[0].date === '2026-04-04', '最新一期应来自当前开奖');
+        assert(merged[1].numbers.join(',') === '3,14,25,36,48', '同日期历史记录应被当前开奖覆盖');
+      });
+
+      test('buildStarModel 使用最新一期作为当前星号状态', () => {
+        const model = buildStarModel([
+          { date: '2026-04-04', numbers: [2, 11, 24, 35, 47], stars: [4, 8] },
+          { date: '2026-04-03', numbers: [3, 14, 25, 36, 48], stars: [5, 7] },
+          { date: '2026-04-01', numbers: [1, 12, 23, 34, 45], stars: [1, 9] }
+        ], 6);
+        assert(model.currentPair.join(',') === '4,8', '当前星号状态应取最新一期');
       });
 
       test('applyDraws 默认剔除最近两期号码', () => {
@@ -1876,7 +3361,9 @@
     async function refreshAllData() {
       await Promise.all([
         fetchLatestDraws(),
-        fetchTensPatternHistory()
+        fetchHistoryDrawHistory(),
+        fetchTensPatternHistory(),
+        fetchOnesPatternHistory()
       ]);
     }
 
@@ -1897,6 +3384,24 @@
       input.addEventListener('change', recomputeRecommendations);
     });
     els.recommendExpandInput.addEventListener('change', recomputeRecommendations);
+    els.onesRecomputeRecommendBtn.addEventListener('click', recomputeOnesRecommendations);
+    [els.onesRecommendTopInput, els.onesRecommendSamplesInput, els.onesRecommendUnseenInput, els.onesRecommendSeedInput].forEach(input => {
+      input.addEventListener('change', recomputeOnesRecommendations);
+    });
+    els.onesRecommendExpandInput.addEventListener('change', recomputeOnesRecommendations);
+    els.onesRecommendShowUnseenInput.addEventListener('change', recomputeOnesRecommendations);
+    els.jointRecomputeRecommendBtn.addEventListener('click', recomputeJointRecommendations);
+    [
+      els.jointRecommendTopInput,
+      els.jointRecommendTensTopInput,
+      els.jointRecommendUnitsTopInput,
+      els.jointRecommendStarTopInput,
+      els.jointRecommendTensStrengthInput,
+      els.jointRecommendStarStrengthInput
+    ].forEach(input => {
+      input.addEventListener('change', recomputeJointRecommendations);
+    });
+    els.jointRecommendUseAvailableInput.addEventListener('change', recomputeJointRecommendations);
     els.exclusionCountControls.addEventListener('click', event => {
       const target = event.target.closest('[data-exclusion-count]');
       if (!target || target.disabled) return;
