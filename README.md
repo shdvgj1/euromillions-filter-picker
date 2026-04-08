@@ -41,7 +41,7 @@ python3 server.py --host 127.0.0.1 --port 8000
 仓库里已经包含：
 
 - [deploy-pages.yml](./.github/workflows/deploy-pages.yml)：推送到 `main` 后自动部署 GitHub Pages
-- [update-draws.yml](./.github/workflows/update-draws.yml)：按法国当地时间 `Europe/Paris` 的每周三、周五 `22:00` 自动更新一次开奖数据，也可以手动触发；如果数据有变化，会自动重新发布 Pages
+- [update-draws.yml](./.github/workflows/update-draws.yml)：按法国当地时间 `Europe/Paris` 的每周二、周五 `22:00` 自动更新一次开奖数据，也可以手动触发；如果数据有变化，会自动重新发布 Pages
 
 部署前提：
 
@@ -58,7 +58,7 @@ python3 server.py --host 127.0.0.1 --port 8000
 - 页面包含一个“十位数组推荐”区域，基于历史十位数组做综合推荐
 - 页面还包含一个“个位数组推荐”区域，基于历史主号个位数组做综合推荐
 - 页面还包含一个“联合推荐（主号 + 星号）”区域，会把主号十位数组、主号个位数组、实际号码结构和星号结构一起考虑，输出最终推荐票
-- GitHub Actions 会在法国当地时间 `Europe/Paris` 的每周三、周五 `22:00` 刷新数据文件
+- GitHub Actions 会在法国当地时间 `Europe/Paris` 的每周二、周五 `22:00` 刷新数据文件
 - 如果静态数据文件暂时不可用，页面会退回到内置样例
 
 ## Docker
