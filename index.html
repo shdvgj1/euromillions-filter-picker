@@ -687,26 +687,18 @@
       <section class="card span-12">
         <div class="row-between">
           <div>
-            <div class="label">联合推荐（主号 + 星号）</div>
-            <div class="muted" id="jointRecommendationSummary">这里会把主号十位数组、主号个位数组、真实号码结构和星号结构一起考虑，输出最终推荐票；只作为手动选号参考，不代表预测。</div>
+            <div class="label">融合推荐系统 v3.0（主号 + 星号）</div>
+            <div class="muted" id="jointRecommendationSummary">这里会按 v3.0 的七维评分全空间枚举主号，再独立计算星号推荐；只作为手动选号参考，不代表预测。</div>
           </div>
           <button class="btn-secondary" id="jointRecomputeRecommendBtn">重新计算联合推荐</button>
         </div>
         <div class="control-grid">
           <div class="control-item">
-            <label for="jointRecommendTopInput">Top-N</label>
+            <label for="jointRecommendTopInput">主号 Top-N</label>
             <input class="number-input" id="jointRecommendTopInput" type="number" min="1" max="20" value="10" />
           </div>
           <div class="control-item">
-            <label for="jointRecommendTensTopInput">十位候选数</label>
-            <input class="number-input" id="jointRecommendTensTopInput" type="number" min="5" max="50" value="20" />
-          </div>
-          <div class="control-item">
-            <label for="jointRecommendUnitsTopInput">个位候选数</label>
-            <input class="number-input" id="jointRecommendUnitsTopInput" type="number" min="20" max="500" value="300" />
-          </div>
-          <div class="control-item">
-            <label for="jointRecommendStarTopInput">星号候选数</label>
+            <label for="jointRecommendStarTopInput">星号 Top-N</label>
             <input class="number-input" id="jointRecommendStarTopInput" type="number" min="2" max="20" value="5" />
           </div>
           <div class="control-item">
@@ -725,29 +717,45 @@
           </div>
         </div>
         <div class="metrics" id="jointRecommendationMeta"></div>
+        <div class="metrics" id="jointRecommendationBest"></div>
         <div class="table-wrap">
           <table class="result-table">
             <thead>
               <tr>
                 <th>#</th>
                 <th>主号码</th>
-                <th>星号</th>
-                <th>综合分</th>
-                <th>十位分</th>
-                <th>个位分</th>
-                <th>结构分</th>
-                <th>星号分</th>
+                <th>总分</th>
+                <th>D2遗漏</th>
+                <th>D3十位</th>
+                <th>D4个位</th>
+                <th>D6和值</th>
+                <th>结构摘要</th>
                 <th>十位数组</th>
                 <th>个位数组</th>
-                <th>结构摘要</th>
               </tr>
             </thead>
-            <tbody id="jointRecommendationBody">
-              <tr><td colspan="11" class="muted">正在等待历史开奖数据…</td></tr>
+            <tbody id="jointRecommendationMainBody">
+              <tr><td colspan="9" class="muted">正在等待历史开奖数据…</td></tr>
             </tbody>
           </table>
         </div>
-        <div class="note" style="margin-top:14px;">联合推荐不是把十位 Top1 和个位 Top1 生硬拼接，而是先生成合法主号候选，再结合真实号码结构和星号模型做最终排序。若勾选“仅用当前剩余号码池”，它会自动避开你当前剔除规则下不可选的主号和星号。</div>
+        <div class="table-wrap" style="margin-top:16px;">
+          <table class="result-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>星号对</th>
+                <th>综合分</th>
+                <th>历史次</th>
+                <th>历史频率</th>
+              </tr>
+            </thead>
+            <tbody id="jointRecommendationStarBody">
+              <tr><td colspan="5" class="muted">正在等待历史开奖数据…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="note" style="margin-top:14px;">这一版会按你给的融合推荐系统 v3.0 逻辑，对当前号码池中的全部合法主号组合做七维评分，再单独给出星号推荐。若勾选“仅用当前剩余号码池”，它会自动避开你当前剔除规则下不可选的主号和星号。</div>
       </section>
 
       <section class="card span-12">
@@ -856,13 +864,23 @@
 
     const DEFAULT_JOINT_RECOMMEND_SETTINGS = {
       top: 10,
-      tensTop: 20,
-      unitsTop: 300,
       starTop: 5,
       tensStrength: 8,
       starStrength: 6,
       useAvailablePool: true
     };
+
+    const JOINT_RECOMMEND_WEIGHTS = {
+      d1: 0.15,
+      d2: 0.22,
+      d3: 0.18,
+      d4: 0.13,
+      d5: 0.10,
+      d6: 0.12,
+      d7: 0.10
+    };
+    const JOINT_CONSEC_PENALTY_FACTOR = 0.90;
+    const JOINT_MAIN_SUM_VOCAB_SIZE = 226;
 
     const MAIN_POOL = Array.from({ length: 50 }, (_, i) => i + 1);
     const STAR_POOL = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -903,10 +921,10 @@
       onesRecomputeRecommendBtn: document.getElementById('onesRecomputeRecommendBtn'),
       jointRecommendationSummary: document.getElementById('jointRecommendationSummary'),
       jointRecommendationMeta: document.getElementById('jointRecommendationMeta'),
-      jointRecommendationBody: document.getElementById('jointRecommendationBody'),
+      jointRecommendationBest: document.getElementById('jointRecommendationBest'),
+      jointRecommendationMainBody: document.getElementById('jointRecommendationMainBody'),
+      jointRecommendationStarBody: document.getElementById('jointRecommendationStarBody'),
       jointRecommendTopInput: document.getElementById('jointRecommendTopInput'),
-      jointRecommendTensTopInput: document.getElementById('jointRecommendTensTopInput'),
-      jointRecommendUnitsTopInput: document.getElementById('jointRecommendUnitsTopInput'),
       jointRecommendStarTopInput: document.getElementById('jointRecommendStarTopInput'),
       jointRecommendTensStrengthInput: document.getElementById('jointRecommendTensStrengthInput'),
       jointRecommendStarStrengthInput: document.getElementById('jointRecommendStarStrengthInput'),
@@ -969,7 +987,13 @@
       historyDrawSignature: '',
       settings: { ...DEFAULT_JOINT_RECOMMEND_SETTINGS },
       model: null,
-      results: [],
+      results: {
+        mainResults: [],
+        starResults: [],
+        bestRecommendation: null,
+        comboCount: 0,
+        durationMs: 0
+      },
       error: ''
     };
 
@@ -1304,6 +1328,84 @@
       const total = Array.from(countMap.values()).reduce((sum, item) => sum + item, 0);
       const unique = Math.max(countMap.size, 1);
       return ((countMap.get(value) || 0) + smoothing) / (total + smoothing * unique);
+    }
+
+    function sigmoid(value) {
+      if (value >= 0) {
+        return 1 / (1 + Math.exp(-value));
+      }
+      const expValue = Math.exp(value);
+      return expValue / (1 + expValue);
+    }
+
+    function safeLog(value, epsilon = 1e-12) {
+      return Math.log(Math.max(value, epsilon));
+    }
+
+    function laplaceProbability(value, countMap, vocabSize) {
+      const total = Array.from(countMap.values()).reduce((sum, item) => sum + item, 0);
+      return ((countMap.get(value) || 0) + 1) / (total + vocabSize);
+    }
+
+    function combinationCount(n, k) {
+      if (!Number.isInteger(n) || !Number.isInteger(k) || k < 0 || n < k) return 0;
+      let result = 1;
+      for (let i = 1; i <= k; i += 1) {
+        result = (result * (n - k + i)) / i;
+      }
+      return Math.round(result);
+    }
+
+    function buildOmissionRatios(elementValues, sequences) {
+      const indexesByValue = new Map();
+      elementValues.forEach(value => indexesByValue.set(value, []));
+
+      sequences.forEach((sequence, index) => {
+        sequence.forEach(value => {
+          if (indexesByValue.has(value)) {
+            indexesByValue.get(value).push(index);
+          }
+        });
+      });
+
+      const ratios = new Map();
+      elementValues.forEach(value => {
+        const indexes = indexesByValue.get(value) || [];
+        if (!indexes.length) {
+          ratios.set(value, 0);
+          return;
+        }
+
+        const omission = sequences.length - 1 - indexes[indexes.length - 1];
+        let avgGap = sequences.length;
+        if (indexes.length > 1) {
+          const gaps = [];
+          for (let i = 0; i < indexes.length - 1; i += 1) {
+            gaps.push(indexes[i + 1] - indexes[i]);
+          }
+          avgGap = gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length;
+        }
+        ratios.set(value, omission / Math.max(avgGap, 1e-9));
+      });
+
+      return ratios;
+    }
+
+    function pushTopResult(results, item, limit, scoreKey = 'score') {
+      let inserted = false;
+      for (let index = 0; index < results.length; index += 1) {
+        if (item[scoreKey] > results[index][scoreKey]) {
+          results.splice(index, 0, item);
+          inserted = true;
+          break;
+        }
+      }
+      if (!inserted && results.length < limit) {
+        results.push(item);
+      }
+      if (results.length > limit) {
+        results.length = limit;
+      }
     }
 
     function normalizeSeed(seedValue) {
@@ -2090,24 +2192,144 @@
       return Math.round(average * 10) / 10;
     }
 
-    function buildMainStructureModel(drawHistory) {
-      if (!Array.isArray(drawHistory) || drawHistory.length < 3) {
-        throw new Error('历史开奖数据不足，无法计算联合推荐');
+    function buildIndividualModel(mains) {
+      const freq = buildCountMap(mains.flat());
+      const maxFreq = Math.max(1, ...Array.from(freq.values()));
+      const omissionRatio = buildOmissionRatios(MAIN_POOL, mains);
+      return {
+        freq,
+        maxFreq,
+        omissionRatio
+      };
+    }
+
+    function buildJointTensModel(patterns, strength = DEFAULT_JOINT_RECOMMEND_SETTINGS.tensStrength) {
+      const keys = patterns.map(pattern => pattern.join(','));
+      const globalCounts = buildCountMap(keys);
+      const globalProb = normalizeCountMap(globalCounts);
+      const transitions = new Map();
+      const transitionTotals = new Map();
+
+      for (let index = 0; index < keys.length - 1; index += 1) {
+        const currentKey = keys[index];
+        const nextKey = keys[index + 1];
+        if (!transitions.has(currentKey)) {
+          transitions.set(currentKey, new Map());
+        }
+        const nextMap = transitions.get(currentKey);
+        nextMap.set(nextKey, (nextMap.get(nextKey) || 0) + 1);
+        transitionTotals.set(currentKey, (transitionTotals.get(currentKey) || 0) + 1);
       }
 
-      const normalized = drawHistory
-        .map((item, index) => normalizeOneDraw(item, index))
-        .filter(Boolean)
-        .sort(compareDrawDesc);
+      const currentPattern = patterns[patterns.length - 1];
+      const currentKey = currentPattern.join(',');
+      const localCounts = transitions.get(currentKey) || new Map();
+      const localN = transitionTotals.get(currentKey) || 0;
+      const alpha = localN > 0 ? strength / (strength + localN) : 1;
 
-      const mains = normalized.slice().reverse().map(draw => draw.numbers.slice().sort((a, b) => a - b));
+      let maxScore = 1e-12;
+      globalProb.forEach((globalProbability, key) => {
+        const localProbability = localN > 0 ? (localCounts.get(key) || 0) / localN : 0;
+        const score = alpha * globalProbability + (1 - alpha) * localProbability + 1e-12;
+        if (score > maxScore) maxScore = score;
+      });
+
       return {
-        latestMain: normalized[0].numbers.slice().sort((a, b) => a - b),
-        prevMain: normalized[1].numbers.slice().sort((a, b) => a - b),
-        sumCounter: buildCountMap(mains.map(numbers => numbers.reduce((sum, value) => sum + value, 0))),
-        oddCounter: buildCountMap(mains.map(numbers => numbers.filter(value => value % 2 === 1).length)),
-        lowCounter: buildCountMap(mains.map(numbers => numbers.filter(value => value <= 25).length)),
-        gapCounter: buildCountMap(mains.map(numbers => averageMainGap(numbers)))
+        currentPattern,
+        currentKey,
+        localCounts,
+        localN,
+        alpha,
+        globalProb,
+        total: patterns.length,
+        uniqueCount: globalCounts.size,
+        maxScore
+      };
+    }
+
+    function scoreJointTensPattern(pattern, model) {
+      const key = pattern.join(',');
+      const globalProbability = model.globalProb.get(key) || 1e-12;
+      const localProbability = model.localN > 0 ? (model.localCounts.get(key) || 0) / model.localN : 0;
+      const rawScore = model.alpha * globalProbability + (1 - model.alpha) * localProbability + 1e-12;
+      return rawScore / Math.max(model.maxScore, 1e-12);
+    }
+
+    function buildJointUnitsModel(unitSeqs) {
+      const positionProbabilities = [];
+      let maxLogPosition = 0;
+      let minLogPosition = 0;
+
+      for (let position = 0; position < 5; position += 1) {
+        const counts = Array.from({ length: 10 }, (_, digit) => unitSeqs.filter(seq => seq[position] === digit).length);
+        const total = unitSeqs.length + 10;
+        const probabilities = counts.map(count => (count + 1) / total);
+        positionProbabilities.push(probabilities);
+        maxLogPosition += safeLog(Math.max(...probabilities));
+        minLogPosition += safeLog(Math.min(...probabilities));
+      }
+
+      const unorderedCounts = buildCountMap(unitSeqs.map(seq => seq.slice().sort((a, b) => a - b).join(',')));
+      const maxUnordered = Math.max(1, ...Array.from(unorderedCounts.values()));
+      const onesSumCounter = buildCountMap(unitSeqs.map(seq => seq.reduce((sum, value) => sum + value, 0)));
+      let maxOnesSumProbability = 1e-12;
+      for (let sumValue = 0; sumValue <= 45; sumValue += 1) {
+        maxOnesSumProbability = Math.max(maxOnesSumProbability, laplaceProbability(sumValue, onesSumCounter, 46));
+      }
+
+      const omissionRatio = buildOmissionRatios(Array.from({ length: 10 }, (_, index) => index), unitSeqs);
+
+      return {
+        positionProbabilities,
+        maxLogPosition,
+        minLogPosition,
+        unorderedCounts,
+        maxUnordered,
+        onesSumCounter,
+        maxOnesSumProbability,
+        omissionRatio
+      };
+    }
+
+    function scoreJointUnitsPattern(unitPattern, model) {
+      const logPosition = unitPattern.reduce((sum, digit, index) => sum + safeLog(model.positionProbabilities[index][digit]), 0);
+      let d4a = (logPosition - model.minLogPosition) / (model.maxLogPosition - model.minLogPosition + 1e-12);
+      d4a = Math.min(Math.max(d4a, 0), 1);
+
+      const unorderedKey = unitPattern.slice().sort((a, b) => a - b).join(',');
+      const d4b = Math.log1p(model.unorderedCounts.get(unorderedKey) || 0) / Math.log1p(model.maxUnordered);
+
+      const unitSum = unitPattern.reduce((sum, value) => sum + value, 0);
+      const d4c = laplaceProbability(unitSum, model.onesSumCounter, 46) / Math.max(model.maxOnesSumProbability, 1e-12);
+
+      const avgOmission = unitPattern.reduce((sum, value) => sum + (model.omissionRatio.get(value) || 0), 0) / unitPattern.length;
+      const d4d = sigmoid(2 * (avgOmission - 1));
+
+      return 0.35 * d4a + 0.30 * d4b + 0.20 * d4c + 0.15 * d4d;
+    }
+
+    function buildMainStructureModel(mains) {
+      const oddCounts = buildCountMap(mains.map(numbers => numbers.filter(value => value % 2 === 1).length));
+      const oddProb = normalizeCountMap(oddCounts);
+      const maxOddProbability = Math.max(1e-12, ...Array.from(oddProb.values()));
+
+      const sumCounter = buildCountMap(mains.map(numbers => numbers.reduce((sum, value) => sum + value, 0)));
+      let maxSumProbability = 1e-12;
+      for (let sumValue = 15; sumValue <= 240; sumValue += 1) {
+        maxSumProbability = Math.max(maxSumProbability, laplaceProbability(sumValue, sumCounter, JOINT_MAIN_SUM_VOCAB_SIZE));
+      }
+
+      const lowCounts = buildCountMap(mains.map(numbers => numbers.filter(value => value <= 25).length));
+      const lowProb = normalizeCountMap(lowCounts);
+      const maxLowProbability = Math.max(1e-12, ...Array.from(lowProb.values()));
+
+      return {
+        oddProb,
+        maxOddProbability,
+        sumCounter,
+        maxSumProbability,
+        lowProb,
+        maxLowProbability
       };
     }
 
@@ -2115,43 +2337,26 @@
       const sumValue = numbers.reduce((sum, value) => sum + value, 0);
       const oddCount = numbers.filter(value => value % 2 === 1).length;
       const lowCount = numbers.filter(value => value <= 25).length;
-      const avgGap = averageMainGap(numbers);
-      const consecutivePairs = numbers.slice(0, 4).reduce((count, value, index) => count + (numbers[index + 1] === value + 1 ? 1 : 0), 0);
-      const overlapLatest = numbers.filter(value => model.latestMain.includes(value)).length;
-      const overlapPrev = numbers.filter(value => model.prevMain.includes(value)).length;
+      const consecutivePairs = numbers.slice(0, 4).reduce(
+        (count, value, index) => count + (numbers[index + 1] === value + 1 ? 1 : 0),
+        0
+      );
 
-      const sumScore = smoothedCounterProbability(sumValue, model.sumCounter);
-      let oddScore = smoothedCounterProbability(oddCount, model.oddCounter);
-      let lowScore = smoothedCounterProbability(lowCount, model.lowCounter);
-      const gapScore = smoothedCounterProbability(avgGap, model.gapCounter);
-
-      if (oddCount === 0 || oddCount === 5) {
-        oddScore *= 0.85;
-      }
-      if (lowCount === 0 || lowCount === 5) {
-        lowScore *= 0.85;
-      }
-
-      const consecutivePenalty = Math.pow(0.90, consecutivePairs);
-      const recentPenalty = Math.pow(0.82, overlapLatest) * Math.pow(0.90, overlapPrev);
-      const score = (
-        0.35 * sumScore +
-        0.20 * oddScore +
-        0.20 * lowScore +
-        0.15 * gapScore +
-        0.10 * 1
-      ) * consecutivePenalty * recentPenalty;
+      const d5 = (model.oddProb.get(oddCount) || 0.01) / Math.max(model.maxOddProbability, 1e-12);
+      const d6 = laplaceProbability(sumValue, model.sumCounter, JOINT_MAIN_SUM_VOCAB_SIZE) / Math.max(model.maxSumProbability, 1e-12);
+      const d7 = (model.lowProb.get(lowCount) || 0.01) / Math.max(model.maxLowProbability, 1e-12);
+      const penalty = Math.pow(JOINT_CONSEC_PENALTY_FACTOR, consecutivePairs);
 
       return {
-        score,
+        d5,
+        d6,
+        d7,
+        penalty,
         detail: {
           sumValue,
           oddCount,
           lowCount,
-          avgGap,
-          consecutivePairs,
-          overlapLatest,
-          overlapPrev
+          consecutivePairs
         }
       };
     }
@@ -2191,61 +2396,50 @@
         transitionTotals.set(currentKey, (transitionTotals.get(currentKey) || 0) + 1);
       }
 
-      const currentPair = normalized[0].stars.slice().sort((a, b) => a - b);
+      const currentPair = chronologicalPairs[chronologicalPairs.length - 1];
       const currentKey = starPairKey(currentPair);
       const localN = transitionTotals.get(currentKey) || 0;
       const alpha = localN > 0 ? strength / (strength + localN) : 1;
 
-      const individualCounter = new Map();
-      for (let digit = 1; digit <= 12; digit += 1) {
-        individualCounter.set(digit, 0);
-      }
-      chronologicalPairs.forEach(pair => {
-        pair.forEach(digit => individualCounter.set(digit, (individualCounter.get(digit) || 0) + 1));
-      });
-
+      const individualCounter = buildCountMap(chronologicalPairs.flat());
       const sumCounter = buildCountMap(chronologicalPairs.map(pair => pair[0] + pair[1]));
       const gapCounter = buildCountMap(chronologicalPairs.map(pair => pair[1] - pair[0]));
-      const omissionRatio = new Map();
-      for (let digit = 1; digit <= 12; digit += 1) {
-        const indexes = [];
-        chronologicalPairs.forEach((pair, index) => {
-          if (pair.includes(digit)) indexes.push(index);
-        });
-        const omission = indexes.length ? chronologicalPairs.length - 1 - indexes[indexes.length - 1] : chronologicalPairs.length;
-        let avgGap = chronologicalPairs.length;
-        if (indexes.length > 1) {
-          const gaps = [];
-          for (let i = 0; i < indexes.length - 1; i += 1) {
-            gaps.push(indexes[i + 1] - indexes[i]);
-          }
-          avgGap = gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length;
-        }
-        omissionRatio.set(digit, omission / Math.max(avgGap, 1e-9));
-      }
+      const omissionRatio = buildOmissionRatios(STAR_POOL, chronologicalPairs);
 
       const localCounts = transitions.get(currentKey) || new Map();
       const maxIndividual = Math.max(1, ...Array.from(individualCounter.values()));
-      const maxSumProbability = Math.max(...Array.from({ length: 21 }, (_, index) => smoothedCounterProbability(index + 3, sumCounter)));
-      const maxGapProbability = Math.max(...Array.from({ length: 11 }, (_, index) => smoothedCounterProbability(index + 1, gapCounter)));
+      let maxBlend = 1e-12;
+      pairProbs.forEach((globalProbability, key) => {
+        const localProbability = localN > 0 ? (localCounts.get(key) || 0) / localN : 0;
+        const blend = alpha * globalProbability + (1 - alpha) * localProbability + 1e-12;
+        if (blend > maxBlend) maxBlend = blend;
+      });
+      let maxSumProbability = 1e-12;
+      for (let sumValue = 3; sumValue <= 23; sumValue += 1) {
+        maxSumProbability = Math.max(maxSumProbability, laplaceProbability(sumValue, sumCounter, 22));
+      }
+      let maxGapProbability = 1e-12;
+      for (let gapValue = 1; gapValue <= 11; gapValue += 1) {
+        maxGapProbability = Math.max(maxGapProbability, laplaceProbability(gapValue, gapCounter, 11));
+      }
 
       const scores = new Map();
       for (let left = 1; left <= 12; left += 1) {
         for (let right = left + 1; right <= 12; right += 1) {
           const pair = [left, right];
           const key = starPairKey(pair);
-          const globalProbability = pairProbs.get(key) || 0;
+          const globalProbability = pairProbs.get(key) || 1e-12;
           const localProbability = localN > 0 ? (localCounts.get(key) || 0) / localN : 0;
-          const pairBlend = alpha * globalProbability + (1 - alpha) * localProbability;
+          const pairBlend = (alpha * globalProbability + (1 - alpha) * localProbability + 1e-12) / Math.max(maxBlend, 1e-12);
           const individualScore = ((individualCounter.get(left) || 0) + (individualCounter.get(right) || 0)) / (2 * maxIndividual);
           const omitAverage = ((omissionRatio.get(left) || 0) + (omissionRatio.get(right) || 0)) / 2;
-          const omissionScore = 1 / (1 + Math.exp(-2 * (omitAverage - 1)));
-          const sumScore = smoothedCounterProbability(left + right, sumCounter) / Math.max(maxSumProbability, 1e-12);
-          const gapScore = smoothedCounterProbability(right - left, gapCounter) / Math.max(maxGapProbability, 1e-12);
+          const omissionScore = sigmoid(2 * (omitAverage - 1));
+          const sumScore = laplaceProbability(left + right, sumCounter, 22) / Math.max(maxSumProbability, 1e-12);
+          const gapScore = laplaceProbability(right - left, gapCounter, 11) / Math.max(maxGapProbability, 1e-12);
           const score = (
-            0.45 * pairBlend +
+            0.40 * pairBlend +
             0.20 * individualScore +
-            0.15 * omissionScore +
+            0.20 * omissionScore +
             0.10 * sumScore +
             0.10 * gapScore
           ) + 1e-12;
@@ -2263,31 +2457,11 @@
         currentPair,
         localN,
         alpha,
+        historyCount: chronologicalPairs.length,
+        pairCounter,
         scores,
         rankedEntries
       };
-    }
-
-    function buildJointOnesHistory(drawHistory) {
-      return drawHistory
-        .map((draw, index) => normalizeUnitsPatternEntry({
-          date: draw.date ?? index,
-          pattern: numbersToUnitsPattern(draw.numbers)
-        }, index))
-        .filter(Boolean)
-        .sort(compareDrawDesc);
-    }
-
-    function resolveJointOnesModel(onesHistory) {
-      const reusableHistory = Array.isArray(onesRecommendationState.history) ? onesRecommendationState.history : [];
-      const canReuse = Boolean(
-        onesRecommendationState.model &&
-        reusableHistory.length === onesHistory.length &&
-        reusableHistory[0]?.date === onesHistory[0]?.date &&
-        reusableHistory[reusableHistory.length - 1]?.date === onesHistory[onesHistory.length - 1]?.date &&
-        onesRecommendationState.historyDrawSignature === currentState.drawSignature
-      );
-      return canReuse ? onesRecommendationState.model : buildOnesModel(onesHistory);
     }
 
     function buildJointRecommendationModel(drawHistory, tensStrength, starStrength) {
@@ -2300,144 +2474,155 @@
         .filter(Boolean)
         .sort(compareDrawDesc);
 
-      const tensHistory = normalized
-        .map((draw, index) => normalizePatternEntry({
-          date: draw.date ?? index,
-          pattern: numbersToTensPattern(draw.numbers)
-        }, index))
-        .filter(Boolean)
-        .sort(compareDrawDesc);
-      const onesHistory = buildJointOnesHistory(normalized);
+      const chronologicalDraws = normalized.slice().reverse();
+      const mains = chronologicalDraws.map(draw => draw.numbers.slice().sort((a, b) => a - b));
+      const tensPatterns = mains.map(numbersToTensPattern).filter(Boolean);
+      const unitPatterns = mains.map(numbersToUnitsPattern).filter(Boolean);
 
       return {
         historyCount: normalized.length,
+        latestDate: normalized[0].date,
         latestMain: normalized[0].numbers.slice().sort((a, b) => a - b),
         latestStar: normalized[0].stars.slice().sort((a, b) => a - b),
-        prevMain: normalized[1].numbers.slice().sort((a, b) => a - b),
-        tensSummary: buildPatternScoreSummary(tensHistory, tensStrength),
-        onesModel: resolveJointOnesModel(onesHistory),
-        structureModel: buildMainStructureModel(normalized),
+        individualModel: buildIndividualModel(mains),
+        tensModel: buildJointTensModel(tensPatterns, tensStrength),
+        unitsModel: buildJointUnitsModel(unitPatterns),
+        structureModel: buildMainStructureModel(mains),
         starModel: buildStarModel(normalized, starStrength)
       };
     }
 
+    function scoreMainCombo(numbers, model) {
+      const tensPattern = numbers.map(mainNumberToDecade);
+      const unitsPattern = numbers.map(value => value % 10);
+
+      const d1 = numbers.reduce((sum, value) => sum + ((model.individualModel.freq.get(value) || 0) / model.individualModel.maxFreq), 0) / numbers.length;
+      const avgOmission = numbers.reduce((sum, value) => sum + (model.individualModel.omissionRatio.get(value) || 0), 0) / numbers.length;
+      const d2 = sigmoid(2 * (avgOmission - 1));
+      const d3 = scoreJointTensPattern(tensPattern, model.tensModel);
+      const d4 = scoreJointUnitsPattern(unitsPattern, model.unitsModel);
+      const structure = scoreMainStructure(numbers, model.structureModel);
+
+      const baseScore = (
+        JOINT_RECOMMEND_WEIGHTS.d1 * d1 +
+        JOINT_RECOMMEND_WEIGHTS.d2 * d2 +
+        JOINT_RECOMMEND_WEIGHTS.d3 * d3 +
+        JOINT_RECOMMEND_WEIGHTS.d4 * d4 +
+        JOINT_RECOMMEND_WEIGHTS.d5 * structure.d5 +
+        JOINT_RECOMMEND_WEIGHTS.d6 * structure.d6 +
+        JOINT_RECOMMEND_WEIGHTS.d7 * structure.d7
+      );
+
+      return {
+        main: numbers.slice(),
+        score: baseScore * structure.penalty,
+        tensPattern,
+        unitsPattern,
+        detail: {
+          d1,
+          d2,
+          d3,
+          d4,
+          d5: structure.d5,
+          d6: structure.d6,
+          d7: structure.d7,
+          penalty: structure.penalty,
+          ...structure.detail
+        }
+      };
+    }
+
     function buildJointRecommendationResults(model, settings) {
-      const tensCandidates = mapToSortedEntries(model.tensSummary.scores)
-        .slice(0, settings.tensTop)
-        .map(([key, score]) => ({ key, score, pattern: key.split(',').map(Number) }));
-      const unitCandidates = model.onesModel.rankedEntries.slice(0, settings.unitsTop);
-      const mainResults = new Map();
+      const mainPool = (settings.useAvailablePool ? currentState.availableMain : MAIN_POOL).slice().sort((a, b) => a - b);
+      if (mainPool.length < 5) {
+        throw new Error('当前主号池不足 5 个，无法做融合推荐');
+      }
 
-      for (const tensCandidate of tensCandidates) {
-        for (const unitCandidate of unitCandidates) {
-          const numbers = [];
-          let isValid = true;
+      const starPoolSet = settings.useAvailablePool ? new Set(currentState.availableStars) : null;
+      const comboCount = combinationCount(mainPool.length, 5);
+      const startTime = typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
+      const mainResults = [];
 
-          for (let index = 0; index < 5; index += 1) {
-            const number = legacyDecadeAndUnitToNumber(tensCandidate.pattern[index], unitCandidate.pattern[index]);
-            if (!Number.isInteger(number)) {
-              isValid = false;
-              break;
+      for (let a = 0; a < mainPool.length - 4; a += 1) {
+        for (let b = a + 1; b < mainPool.length - 3; b += 1) {
+          for (let c = b + 1; c < mainPool.length - 2; c += 1) {
+            for (let d = c + 1; d < mainPool.length - 1; d += 1) {
+              for (let e = d + 1; e < mainPool.length; e += 1) {
+                pushTopResult(
+                  mainResults,
+                  scoreMainCombo([mainPool[a], mainPool[b], mainPool[c], mainPool[d], mainPool[e]], model),
+                  settings.top
+                );
+              }
             }
-            numbers.push(number);
-          }
-
-          if (!isValid) continue;
-          const sortedNumbers = numbers.slice().sort((a, b) => a - b);
-          if (sortedNumbers.some((value, index) => value !== numbers[index])) continue;
-          if (new Set(sortedNumbers).size !== 5) continue;
-          if (settings.useAvailablePool && !sortedNumbers.every(number => currentState.availableMain.includes(number))) continue;
-
-          const structure = scoreMainStructure(sortedNumbers, model.structureModel);
-          const finalScore = (
-            Math.pow(Math.max(tensCandidate.score, 1e-12), 0.30) *
-            Math.pow(Math.max(unitCandidate.score, 1e-12), 0.45) *
-            Math.pow(Math.max(structure.score, 1e-12), 0.25)
-          );
-          const key = sortedNumbers.join(',');
-
-          if (!mainResults.has(key) || finalScore > mainResults.get(key).mainScore) {
-            mainResults.set(key, {
-              main: sortedNumbers,
-              mainScore: finalScore,
-              tensScore: tensCandidate.score,
-              unitsScore: unitCandidate.score,
-              structScore: structure.score,
-              tensPattern: tensCandidate.pattern,
-              unitsPattern: unitCandidate.pattern,
-              structureDetail: structure.detail
-            });
           }
         }
       }
 
-      const filteredMainResults = Array.from(mainResults.values()).sort((left, right) => right.mainScore - left.mainScore);
-      if (!filteredMainResults.length) {
-        throw new Error(settings.useAvailablePool
-          ? '当前剩余号码池下没有生成任何合法联合候选；可以提高候选数，或取消“仅用当前剩余号码池”'
-          : '没有生成任何合法联合候选；可以适当提高候选数');
-      }
-
-      const starCandidates = model.starModel.rankedEntries
-        .filter(item => !settings.useAvailablePool || item.pair.every(star => currentState.availableStars.includes(star)))
-        .slice(0, settings.starTop);
-      if (!starCandidates.length) {
-        throw new Error('当前剩余星号池不足以生成联合推荐');
-      }
-
-      const finalResults = filteredMainResults
-        .slice(0, Math.max(settings.top * 3, 30))
+      const starResults = model.starModel.rankedEntries
+        .filter(item => !starPoolSet || item.pair.every(star => starPoolSet.has(star)))
+        .slice(0, settings.starTop)
         .map(item => {
-          let bestPair = starCandidates[0].pair;
-          let bestStarScore = starCandidates[0].score;
-          let bestTotalScore = -1;
-
-          starCandidates.forEach(candidate => {
-            const totalScore = (
-              Math.pow(Math.max(item.mainScore, 1e-12), 0.82) *
-              Math.pow(Math.max(candidate.score, 1e-12), 0.18)
-            );
-            if (totalScore > bestTotalScore) {
-              bestTotalScore = totalScore;
-              bestPair = candidate.pair;
-              bestStarScore = candidate.score;
-            }
-          });
-
+          const count = model.starModel.pairCounter.get(item.key) || 0;
           return {
-            main: item.main,
-            stars: bestPair,
-            finalScore: bestTotalScore,
-            tensScore: item.tensScore,
-            unitsScore: item.unitsScore,
-            structScore: item.structScore,
-            starScore: bestStarScore,
-            tensPattern: item.tensPattern,
-            unitsPattern: item.unitsPattern,
-            structureDetail: item.structureDetail
+            ...item,
+            historyCount: count,
+            frequency: model.starModel.historyCount ? count / model.starModel.historyCount : 0
           };
-        })
-        .sort((left, right) => right.finalScore - left.finalScore);
+        });
 
-      return finalResults.slice(0, settings.top);
+      if (!starResults.length) {
+        throw new Error('当前剩余星号池不足以生成星号推荐');
+      }
+
+      const endTime = typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
+      const bestRecommendation = mainResults.length
+        ? {
+          main: mainResults[0].main.slice(),
+          stars: starResults[0].pair.slice(),
+          mainScore: mainResults[0].score,
+          starScore: starResults[0].score,
+          tensPattern: mainResults[0].tensPattern.slice(),
+          unitsPattern: mainResults[0].unitsPattern.slice()
+        }
+        : null;
+
+      return {
+        mainResults,
+        starResults,
+        bestRecommendation,
+        comboCount,
+        durationMs: Math.max(0, endTime - startTime)
+      };
     }
 
-    function buildJointRecommendationRow(item, index) {
-      const detail = item.structureDetail;
-      const summaryText = `和值${detail.sumValue} / ${detail.oddCount}奇${5 - detail.oddCount}偶 / 低区${detail.lowCount} / 间距${detail.avgGap.toFixed(1)} / 连号${detail.consecutivePairs} / 重最新${detail.overlapLatest} / 重上期${detail.overlapPrev}`;
+    function buildJointMainRecommendationRow(item, index) {
+      const detail = item.detail;
+      const summaryText = `和值${detail.sumValue} / ${detail.oddCount}奇${5 - detail.oddCount}偶 / ${detail.lowCount}低${5 - detail.lowCount}高 / 连号${detail.consecutivePairs}`;
       return `
         <tr>
           <td>${index}</td>
           <td class="mono">${item.main.join(' ')}</td>
-          <td class="mono">${item.stars.join(' ')}</td>
-          <td class="mono">${item.finalScore.toFixed(8)}</td>
-          <td class="mono">${item.tensScore.toFixed(8)}</td>
-          <td class="mono">${item.unitsScore.toFixed(8)}</td>
-          <td class="mono">${item.structScore.toFixed(8)}</td>
-          <td class="mono">${item.starScore.toFixed(8)}</td>
+          <td class="mono">${item.score.toFixed(8)}</td>
+          <td class="mono">${item.detail.d2.toFixed(4)}</td>
+          <td class="mono">${item.detail.d3.toFixed(4)}</td>
+          <td class="mono">${item.detail.d4.toFixed(4)}</td>
+          <td class="mono">${item.detail.d6.toFixed(4)}</td>
+          <td>${summaryText}</td>
           <td class="mono">${formatPattern(item.tensPattern)}</td>
           <td class="mono">${formatPattern(item.unitsPattern)}</td>
-          <td>${summaryText}</td>
+        </tr>
+      `;
+    }
+
+    function buildJointStarRecommendationRow(item, index) {
+      return `
+        <tr>
+          <td>${index}</td>
+          <td class="mono">${item.pair.join(' ')}</td>
+          <td class="mono">${item.score.toFixed(8)}</td>
+          <td>${item.historyCount}</td>
+          <td>${(item.frequency * 100).toFixed(2)}%</td>
         </tr>
       `;
     }
@@ -2446,36 +2631,65 @@
       if (jointRecommendationState.error) {
         els.jointRecommendationSummary.textContent = jointRecommendationState.error;
         els.jointRecommendationMeta.innerHTML = '<span class="metric">联合推荐暂不可用</span>';
-        els.jointRecommendationBody.innerHTML = '<tr><td colspan="11" class="muted">暂无可用推荐</td></tr>';
+        els.jointRecommendationBest.innerHTML = '<span class="metric">未生成最优组合</span>';
+        els.jointRecommendationMainBody.innerHTML = '<tr><td colspan="9" class="muted">暂无可用推荐</td></tr>';
+        els.jointRecommendationStarBody.innerHTML = '<tr><td colspan="5" class="muted">暂无可用推荐</td></tr>';
         return;
       }
 
       if (!jointRecommendationState.model) {
         els.jointRecommendationSummary.textContent = '正在等待历史开奖数据…';
         els.jointRecommendationMeta.innerHTML = '<span class="metric">历史开奖尚未加载</span>';
-        els.jointRecommendationBody.innerHTML = '<tr><td colspan="11" class="muted">正在等待历史开奖数据…</td></tr>';
+        els.jointRecommendationBest.innerHTML = '<span class="metric">正在等待最优组合…</span>';
+        els.jointRecommendationMainBody.innerHTML = '<tr><td colspan="9" class="muted">正在等待历史开奖数据…</td></tr>';
+        els.jointRecommendationStarBody.innerHTML = '<tr><td colspan="5" class="muted">正在等待历史开奖数据…</td></tr>';
         return;
       }
 
       const model = jointRecommendationState.model;
-      els.jointRecommendationSummary.textContent = `当前最新主号是 ${model.latestMain.join(' ')}，星号是 ${model.latestStar.join(' ')}。这里会先筛出合法主号候选，再结合真实号码结构和星号模型给出最终推荐票；只作为手动选号参考，不代表预测。`;
+      const results = jointRecommendationState.results || {
+        mainResults: [],
+        starResults: [],
+        bestRecommendation: null,
+        comboCount: 0,
+        durationMs: 0
+      };
+
+      els.jointRecommendationSummary.textContent = `当前最新主号是 ${model.latestMain.join(' ')}，星号是 ${model.latestStar.join(' ')}。这里会按融合推荐系统 v3.0 的七维评分对合法主号全空间枚举，再独立给出星号推荐；只作为手动选号参考，不代表预测。`;
       els.jointRecommendationMeta.innerHTML = [
         `历史期数：${model.historyCount}`,
         `最新主号：${model.latestMain.join(' ')}`,
         `最新星号：${model.latestStar.join(' ')}`,
-        `上期主号：${model.prevMain.join(' ')}`,
-        `十位转移样本数：${model.tensSummary.localN}`,
-        `十位权重 α：${model.tensSummary.alpha.toFixed(4)}`,
+        `当前十位数组：${formatPattern(model.tensModel.currentPattern)}`,
+        `十位转移样本数：${model.tensModel.localN}`,
+        `十位权重 α：${model.tensModel.alpha.toFixed(4)}`,
         `星号转移样本数：${model.starModel.localN}`,
         `星号权重 α：${model.starModel.alpha.toFixed(4)}`,
+        `主号枚举组合数：${results.comboCount.toLocaleString('zh-CN')}`,
+        `计算耗时：${results.durationMs.toFixed(0)} ms`,
         `使用范围：${jointRecommendationState.settings.useAvailablePool ? '当前剩余号码池' : '全部号码池'}`,
         `历史源：${jointRecommendationState.source || '未确定'}`,
         `当前开奖：${currentState.source || '未确定'}`
       ].map(text => `<span class="metric">${text}</span>`).join('');
 
-      els.jointRecommendationBody.innerHTML = jointRecommendationState.results.length
-        ? jointRecommendationState.results.map((item, index) => buildJointRecommendationRow(item, index + 1)).join('')
-        : '<tr><td colspan="11" class="muted">暂无可用推荐</td></tr>';
+      if (results.bestRecommendation) {
+        els.jointRecommendationBest.innerHTML = [
+          `最佳主号：${results.bestRecommendation.main.join(' ')}`,
+          `最佳星号：${results.bestRecommendation.stars.join(' ')}`,
+          `主号总分：${results.bestRecommendation.mainScore.toFixed(8)}`,
+          `星号总分：${results.bestRecommendation.starScore.toFixed(8)}`
+        ].map(text => `<span class="metric">${text}</span>`).join('');
+      } else {
+        els.jointRecommendationBest.innerHTML = '<span class="metric">还没有生成最优组合</span>';
+      }
+
+      els.jointRecommendationMainBody.innerHTML = results.mainResults.length
+        ? results.mainResults.map((item, index) => buildJointMainRecommendationRow(item, index + 1)).join('')
+        : '<tr><td colspan="9" class="muted">暂无可用推荐</td></tr>';
+
+      els.jointRecommendationStarBody.innerHTML = results.starResults.length
+        ? results.starResults.map((item, index) => buildJointStarRecommendationRow(item, index + 1)).join('')
+        : '<tr><td colspan="5" class="muted">暂无星号推荐</td></tr>';
     }
 
     function recomputeJointRecommendations() {
@@ -2486,8 +2700,6 @@
 
       const settings = {
         top: Math.max(1, Math.min(20, Number(els.jointRecommendTopInput.value) || DEFAULT_JOINT_RECOMMEND_SETTINGS.top)),
-        tensTop: Math.max(5, Math.min(50, Number(els.jointRecommendTensTopInput.value) || DEFAULT_JOINT_RECOMMEND_SETTINGS.tensTop)),
-        unitsTop: Math.max(20, Math.min(500, Number(els.jointRecommendUnitsTopInput.value) || DEFAULT_JOINT_RECOMMEND_SETTINGS.unitsTop)),
         starTop: Math.max(2, Math.min(20, Number(els.jointRecommendStarTopInput.value) || DEFAULT_JOINT_RECOMMEND_SETTINGS.starTop)),
         tensStrength: Math.max(1, Math.min(50, Number(els.jointRecommendTensStrengthInput.value) || DEFAULT_JOINT_RECOMMEND_SETTINGS.tensStrength)),
         starStrength: Math.max(1, Math.min(50, Number(els.jointRecommendStarStrengthInput.value) || DEFAULT_JOINT_RECOMMEND_SETTINGS.starStrength)),
@@ -2516,8 +2728,13 @@
         jointRecommendationState.results = buildJointRecommendationResults(jointRecommendationState.model, settings);
         jointRecommendationState.error = '';
       } catch (err) {
-        jointRecommendationState.model = null;
-        jointRecommendationState.results = [];
+        jointRecommendationState.results = {
+          mainResults: [],
+          starResults: [],
+          bestRecommendation: null,
+          comboCount: 0,
+          durationMs: 0
+        };
         jointRecommendationState.error = '联合推荐计算失败：' + describeError(err);
       }
 
@@ -3302,6 +3519,35 @@
         assert(model.currentPair.join(',') === '4,8', '当前星号状态应取最新一期');
       });
 
+      test('buildJointRecommendationModel 会使用最新一期作为当前十位状态', () => {
+        const model = buildJointRecommendationModel([
+          { date: '2026-04-04', numbers: [2, 11, 24, 35, 47], stars: [4, 8] },
+          { date: '2026-04-03', numbers: [3, 14, 25, 36, 48], stars: [5, 7] },
+          { date: '2026-04-01', numbers: [1, 12, 23, 34, 45], stars: [1, 9] }
+        ], 8, 6);
+        assert(model.tensModel.currentPattern.join(',') === '0,1,2,3,4', '当前十位状态应取最新一期主号');
+      });
+
+      test('buildJointRecommendationResults 勾选剩余号码池时只使用当前可选号码', () => {
+        currentState.availableMain = [1, 2, 3, 4, 5];
+        currentState.availableStars = [1, 2, 3, 4];
+        const model = buildJointRecommendationModel([
+          { date: '2026-04-04', numbers: [2, 11, 24, 35, 47], stars: [4, 8] },
+          { date: '2026-04-03', numbers: [3, 14, 25, 36, 48], stars: [5, 7] },
+          { date: '2026-04-01', numbers: [1, 12, 23, 34, 45], stars: [1, 9] }
+        ], 8, 6);
+        const results = buildJointRecommendationResults(model, {
+          top: 5,
+          starTop: 5,
+          tensStrength: 8,
+          starStrength: 6,
+          useAvailablePool: true
+        });
+        assert(results.mainResults.length === 1, '主号池只有 5 个号码时应只生成 1 个组合');
+        assert(results.mainResults[0].main.join(',') === '1,2,3,4,5', '主号推荐应只使用当前剩余号码池');
+        assert(results.starResults.every(item => item.pair.every(star => currentState.availableStars.includes(star))), '星号推荐应只使用当前剩余星号池');
+      });
+
       test('applyDraws 默认剔除最近两期号码', () => {
         currentState.exclusionDrawCount = DEFAULT_EXCLUSION_DRAW_COUNT;
         applyDraws([
@@ -3393,8 +3639,6 @@
     els.jointRecomputeRecommendBtn.addEventListener('click', recomputeJointRecommendations);
     [
       els.jointRecommendTopInput,
-      els.jointRecommendTensTopInput,
-      els.jointRecommendUnitsTopInput,
       els.jointRecommendStarTopInput,
       els.jointRecommendTensStrengthInput,
       els.jointRecommendStarStrengthInput
