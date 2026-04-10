@@ -690,7 +690,10 @@
             <div class="label">融合推荐系统 v3.0（主号 + 星号）</div>
             <div class="muted" id="jointRecommendationSummary">这里会按 v3.0 的七维评分全空间枚举主号，再独立计算星号推荐；只作为手动选号参考，不代表预测。</div>
           </div>
-          <button class="btn-secondary" id="jointRecomputeRecommendBtn">重新计算联合推荐</button>
+          <div class="row">
+            <button class="btn-secondary" id="jointExportRecommendBtn">导出推荐号码（TXT）</button>
+            <button class="btn-secondary" id="jointRecomputeRecommendBtn">重新计算联合推荐</button>
+          </div>
         </div>
         <div class="control-grid">
           <div class="control-item">
@@ -735,7 +738,7 @@
               </tr>
             </thead>
             <tbody id="jointRecommendationMainBody">
-              <tr><td colspan="9" class="muted">正在等待历史开奖数据…</td></tr>
+              <tr><td colspan="10" class="muted">正在等待历史开奖数据…</td></tr>
             </tbody>
           </table>
         </div>
@@ -929,6 +932,7 @@
       jointRecommendTensStrengthInput: document.getElementById('jointRecommendTensStrengthInput'),
       jointRecommendStarStrengthInput: document.getElementById('jointRecommendStarStrengthInput'),
       jointRecommendUseAvailableInput: document.getElementById('jointRecommendUseAvailableInput'),
+      jointExportRecommendBtn: document.getElementById('jointExportRecommendBtn'),
       jointRecomputeRecommendBtn: document.getElementById('jointRecomputeRecommendBtn'),
       selectedMain: document.getElementById('selectedMain'),
       selectedStars: document.getElementById('selectedStars'),
@@ -2627,13 +2631,140 @@
       `;
     }
 
+    function buildJointOutputTickets(results, maxCount = null) {
+      const mainResults = Array.isArray(results?.mainResults) ? results.mainResults : [];
+      const starResults = Array.isArray(results?.starResults) ? results.starResults : [];
+      if (!mainResults.length || !starResults.length) {
+        return [];
+      }
+
+      const limit = Math.max(1, Math.min(maxCount || mainResults.length, mainResults.length));
+      const tickets = [];
+      for (let index = 0; index < limit; index += 1) {
+        const mainItem = mainResults[index];
+        const starItem = starResults[index % starResults.length];
+        const recommendationIndex = (mainItem.score * 0.82 + starItem.score * 0.18) * 100;
+        tickets.push({
+          index: index + 1,
+          main: mainItem.main.slice(),
+          stars: starItem.pair.slice(),
+          mainRank: index + 1,
+          starRank: (index % starResults.length) + 1,
+          mainScore: mainItem.score,
+          starScore: starItem.score,
+          recommendationIndex,
+          tensPattern: mainItem.tensPattern.slice(),
+          unitsPattern: mainItem.unitsPattern.slice()
+        });
+      }
+      return tickets.sort((left, right) => right.recommendationIndex - left.recommendationIndex)
+        .map((ticket, index) => ({
+          ...ticket,
+          index: index + 1
+        }));
+    }
+
+    function formatExportDateTime(value = new Date()) {
+      const date = value instanceof Date ? value : new Date(value);
+      const safeDate = Number.isNaN(date.getTime()) ? new Date() : date;
+      return safeDate.toLocaleString('zh-CN');
+    }
+
+    function formatFileTimestamp(value = new Date()) {
+      const date = value instanceof Date ? value : new Date(value);
+      const safeDate = Number.isNaN(date.getTime()) ? new Date() : date;
+      const parts = [
+        safeDate.getFullYear(),
+        String(safeDate.getMonth() + 1).padStart(2, '0'),
+        String(safeDate.getDate()).padStart(2, '0'),
+        String(safeDate.getHours()).padStart(2, '0'),
+        String(safeDate.getMinutes()).padStart(2, '0'),
+        String(safeDate.getSeconds()).padStart(2, '0')
+      ];
+      return `${parts[0]}${parts[1]}${parts[2]}-${parts[3]}${parts[4]}${parts[5]}`;
+    }
+
+    function buildJointRecommendationExportContent() {
+      if (jointRecommendationState.error) {
+        throw new Error('当前联合推荐不可用，无法导出');
+      }
+
+      const results = jointRecommendationState.results || {};
+      const tickets = buildJointOutputTickets(results, jointRecommendationState.settings?.top || DEFAULT_JOINT_RECOMMEND_SETTINGS.top);
+      if (!tickets.length) {
+        throw new Error('当前没有可导出的推荐号码');
+      }
+
+      const divider = '………………';
+      const lines = [
+        'EuroMillions 推荐号码',
+        `生成时间：${formatExportDateTime(new Date())}`,
+        divider
+      ];
+
+      if (currentState.draws.length) {
+        const latestDraw = currentState.draws[0];
+        lines.push('上期最新号码：');
+        lines.push(`日期：${formatDate(latestDraw.date)}`);
+        lines.push(`主号：${latestDraw.numbers.join(' ')}`);
+        lines.push(`星号：${latestDraw.stars.join(' ')}`);
+        lines.push(divider);
+      }
+
+      lines.push('下期最佳推荐：');
+      tickets.forEach(ticket => {
+        lines.push(`第 ${ticket.index} 注`);
+        lines.push(`推荐指数：${ticket.recommendationIndex.toFixed(2)}`);
+        lines.push(`主号：${ticket.main.join(' ')}`);
+        lines.push(`星号：${ticket.stars.join(' ')}`);
+        lines.push(divider);
+      });
+
+      if (savedTickets.length) {
+        lines.push('你已固定的号码：');
+        savedTickets.forEach((ticket, index) => {
+          lines.push(`第 ${index + 1} 注`);
+          lines.push(`主号：${ticket.main.join(' ')}`);
+          lines.push(`星号：${ticket.stars.join(' ')}`);
+          lines.push(divider);
+        });
+      }
+
+      return lines.join('\r\n');
+    }
+
+    function downloadTextFile(filename, content) {
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.rel = 'noopener';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    function exportJointRecommendations() {
+      try {
+        const content = buildJointRecommendationExportContent();
+        const filename = `euromillions-recommendations-${formatFileTimestamp(new Date())}.txt`;
+        downloadTextFile(filename, content);
+        setStatus(`已导出推荐号码文件：${filename}`, 'ok');
+      } catch (err) {
+        setStatus('导出推荐号码失败：' + describeError(err), 'bad');
+      }
+    }
+
     function renderJointRecommendations() {
       if (jointRecommendationState.error) {
         els.jointRecommendationSummary.textContent = jointRecommendationState.error;
         els.jointRecommendationMeta.innerHTML = '<span class="metric">联合推荐暂不可用</span>';
         els.jointRecommendationBest.innerHTML = '<span class="metric">未生成最优组合</span>';
-        els.jointRecommendationMainBody.innerHTML = '<tr><td colspan="9" class="muted">暂无可用推荐</td></tr>';
+        els.jointRecommendationMainBody.innerHTML = '<tr><td colspan="10" class="muted">暂无可用推荐</td></tr>';
         els.jointRecommendationStarBody.innerHTML = '<tr><td colspan="5" class="muted">暂无可用推荐</td></tr>';
+        els.jointExportRecommendBtn.disabled = true;
         return;
       }
 
@@ -2641,8 +2772,9 @@
         els.jointRecommendationSummary.textContent = '正在等待历史开奖数据…';
         els.jointRecommendationMeta.innerHTML = '<span class="metric">历史开奖尚未加载</span>';
         els.jointRecommendationBest.innerHTML = '<span class="metric">正在等待最优组合…</span>';
-        els.jointRecommendationMainBody.innerHTML = '<tr><td colspan="9" class="muted">正在等待历史开奖数据…</td></tr>';
+        els.jointRecommendationMainBody.innerHTML = '<tr><td colspan="10" class="muted">正在等待历史开奖数据…</td></tr>';
         els.jointRecommendationStarBody.innerHTML = '<tr><td colspan="5" class="muted">正在等待历史开奖数据…</td></tr>';
+        els.jointExportRecommendBtn.disabled = true;
         return;
       }
 
@@ -2685,11 +2817,12 @@
 
       els.jointRecommendationMainBody.innerHTML = results.mainResults.length
         ? results.mainResults.map((item, index) => buildJointMainRecommendationRow(item, index + 1)).join('')
-        : '<tr><td colspan="9" class="muted">暂无可用推荐</td></tr>';
+        : '<tr><td colspan="10" class="muted">暂无可用推荐</td></tr>';
 
       els.jointRecommendationStarBody.innerHTML = results.starResults.length
         ? results.starResults.map((item, index) => buildJointStarRecommendationRow(item, index + 1)).join('')
         : '<tr><td colspan="5" class="muted">暂无星号推荐</td></tr>';
+      els.jointExportRecommendBtn.disabled = !(results.mainResults.length && results.starResults.length);
     }
 
     function recomputeJointRecommendations() {
@@ -3548,6 +3681,59 @@
         assert(results.starResults.every(item => item.pair.every(star => currentState.availableStars.includes(star))), '星号推荐应只使用当前剩余星号池');
       });
 
+      test('buildJointOutputTickets 会生成完整的 5+2 推荐票', () => {
+        const tickets = buildJointOutputTickets({
+          mainResults: [
+            { main: [1, 2, 3, 4, 5], score: 0.9, tensPattern: [0, 0, 0, 0, 0], unitsPattern: [1, 2, 3, 4, 5] },
+            { main: [6, 7, 8, 9, 10], score: 0.8, tensPattern: [0, 0, 0, 0, 0], unitsPattern: [6, 7, 8, 9, 0] }
+          ],
+          starResults: [
+            { pair: [1, 2], score: 0.7 },
+            { pair: [3, 4], score: 0.6 }
+          ]
+        }, 2);
+        assert(tickets.length === 2, '应生成 2 注推荐票');
+        assert(tickets[0].main.join(',') === '1,2,3,4,5', '第 1 注主号不正确');
+        assert(tickets[0].stars.join(',') === '1,2', '第 1 注星号不正确');
+        assert(tickets[0].recommendationIndex > tickets[1].recommendationIndex, '推荐票应按推荐指数降序排列');
+        assert(tickets[1].stars.join(',') === '3,4', '第 2 注星号不正确');
+      });
+
+      test('buildJointRecommendationExportContent 会输出推荐票文本', () => {
+        currentState.source = '测试数据';
+        currentState.exclusionDrawCount = 2;
+        currentState.draws = [
+          { date: '2026-04-08', numbers: [1, 2, 3, 4, 5], stars: [1, 2] },
+          { date: '2026-04-05', numbers: [6, 7, 8, 9, 10], stars: [3, 4] }
+        ];
+        jointRecommendationState.settings = { ...DEFAULT_JOINT_RECOMMEND_SETTINGS, top: 2, useAvailablePool: true };
+        jointRecommendationState.error = '';
+        jointRecommendationState.results = {
+          mainResults: [
+            { main: [11, 12, 13, 14, 15], score: 0.88, tensPattern: [1, 1, 1, 1, 1], unitsPattern: [1, 2, 3, 4, 5] },
+            { main: [21, 22, 23, 24, 25], score: 0.77, tensPattern: [2, 2, 2, 2, 2], unitsPattern: [1, 2, 3, 4, 5] }
+          ],
+          starResults: [
+            { pair: [5, 6], score: 0.66 },
+            { pair: [7, 8], score: 0.55 }
+          ],
+          bestRecommendation: {
+            main: [11, 12, 13, 14, 15],
+            stars: [5, 6],
+            mainScore: 0.88,
+            starScore: 0.66
+          }
+        };
+        const content = buildJointRecommendationExportContent();
+        assert(content.includes('上期最新号码：'), '导出内容应包含最新号码标题');
+        assert(content.includes('下期最佳推荐：'), '导出内容应包含最佳推荐标题');
+        assert(!content.includes('其他推荐：'), '导出内容不应再区分其他推荐');
+        assert(content.includes('推荐指数：'), '导出内容应包含推荐指数');
+        assert(content.includes('主号：11 12 13 14 15'), '导出主号不正确');
+        assert(content.includes('星号：5 6'), '导出星号不正确');
+        assert(content.includes('………………'), '导出内容应包含分隔线');
+      });
+
       test('applyDraws 默认剔除最近两期号码', () => {
         currentState.exclusionDrawCount = DEFAULT_EXCLUSION_DRAW_COUNT;
         applyDraws([
@@ -3636,6 +3822,7 @@
     });
     els.onesRecommendExpandInput.addEventListener('change', recomputeOnesRecommendations);
     els.onesRecommendShowUnseenInput.addEventListener('change', recomputeOnesRecommendations);
+    els.jointExportRecommendBtn.addEventListener('click', exportJointRecommendations);
     els.jointRecomputeRecommendBtn.addEventListener('click', recomputeJointRecommendations);
     [
       els.jointRecommendTopInput,
