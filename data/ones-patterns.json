@@ -1,8 +1,28 @@
 {
-  "generatedAt": "2026-04-17T20:56:53.303903Z",
+  "generatedAt": "2026-04-24T20:59:48.630678Z",
   "sourceLabel": "历史个位数组",
   "sourceUrl": "https://irish.national-lottery.com/euromillions/results",
   "items": [
+    {
+      "date": "2026-04-24",
+      "pattern": [
+        5,
+        6,
+        0,
+        0,
+        5
+      ]
+    },
+    {
+      "date": "2026-04-21",
+      "pattern": [
+        3,
+        6,
+        9,
+        0,
+        7
+      ]
+    },
     {
       "date": "2026-04-17",
       "pattern": [

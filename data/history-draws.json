@@ -1,8 +1,38 @@
 {
-  "generatedAt": "2026-04-17T20:56:53.303903Z",
+  "generatedAt": "2026-04-24T20:59:48.630678Z",
   "sourceLabel": "历史开奖（主号+星号）",
   "sourceUrl": "https://irish.national-lottery.com/euromillions/results",
   "draws": [
+    {
+      "id": "2026-04-24",
+      "date": "2026-04-24",
+      "numbers": [
+        25,
+        26,
+        30,
+        40,
+        45
+      ],
+      "stars": [
+        1,
+        5
+      ]
+    },
+    {
+      "id": "2026-04-21",
+      "date": "2026-04-21",
+      "numbers": [
+        13,
+        16,
+        29,
+        40,
+        47
+      ],
+      "stars": [
+        3,
+        4
+      ]
+    },
     {
       "id": "2026-04-17",
       "date": "2026-04-17",
